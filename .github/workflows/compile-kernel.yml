@@ -87,13 +87,9 @@ on:
         required: false
         default: "false"
       kernel_sign:
-        description: "Set the kernel custom signature"
+        description: "Kernel custom signature (e.g. -leftymods, -yourname)"
         required: false
-        default: "-ophub"
-        type: choice
-        options:
-          - -ophub
-          - -yourname
+        default: "-leftymods"
 
 env:
   TZ: Etc/UTC

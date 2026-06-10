@@ -79,8 +79,8 @@ auto_kernel="true"
 # Set whether to apply custom kernel patches, options: [ true / false ]
 auto_patch="false"
 # Set custom signature for the kernel
-custom_name="-ophub"
-pkg_maintainer="ophub <noreply@ophub.org>"
+custom_name="-leftymods"
+pkg_maintainer="leftymods <ggalab33@gmail.com>"
 # Set the kernel compile object, options: [ dtbs / all ]
 package_list="all"
 # Set the compression format, options: [ gzip / lzma / xz / zstd ]
@@ -800,20 +800,7 @@ generate_uinitrd() {
 }
 
 packit_dtbs() {
-    # Pack 3 dtbs files
     echo -e "${STEPS} Packing the [ ${kernel_outname} ] dtbs packages..."
-
-    cd ${output_path}/dtb/allwinner
-    cp -f ${kernel_path}/${local_kernel_path}/arch/${SRC_ARCH}/boot/dts/allwinner/*.dtb . 2>/dev/null
-    [[ "${?}" -eq "0" ]] && {
-        [[ -d "${kernel_path}/${local_kernel_path}/arch/${SRC_ARCH}/boot/dts/allwinner/overlay" ]] && {
-            mkdir -p overlay
-            cp -f ${kernel_path}/${local_kernel_path}/arch/${SRC_ARCH}/boot/dts/allwinner/overlay/*.dtbo overlay/ 2>/dev/null
-        }
-        tar -czf dtb-allwinner-${kernel_outname}.tar.gz *
-        mv -f *.tar.gz ${output_path}/${kernel_version}
-        echo -e "${SUCCESS} The [ dtb-allwinner-${kernel_outname}.tar.gz ] file packaged successfully."
-    }
 
     cd ${output_path}/dtb/amlogic
     cp -f ${kernel_path}/${local_kernel_path}/arch/${SRC_ARCH}/boot/dts/amlogic/*.dtb . 2>/dev/null
@@ -825,18 +812,6 @@ packit_dtbs() {
         tar -czf dtb-amlogic-${kernel_outname}.tar.gz *
         mv -f *.tar.gz ${output_path}/${kernel_version}
         echo -e "${SUCCESS} The [ dtb-amlogic-${kernel_outname}.tar.gz ] file packaged successfully."
-    }
-
-    cd ${output_path}/dtb/rockchip
-    cp -f ${kernel_path}/${local_kernel_path}/arch/${SRC_ARCH}/boot/dts/rockchip/*.dtb . 2>/dev/null
-    [[ "${?}" -eq "0" ]] && {
-        [[ -d "${kernel_path}/${local_kernel_path}/arch/${SRC_ARCH}/boot/dts/rockchip/overlay" ]] && {
-            mkdir -p overlay
-            cp -f ${kernel_path}/${local_kernel_path}/arch/${SRC_ARCH}/boot/dts/rockchip/overlay/*.dtbo overlay/ 2>/dev/null
-        }
-        tar -czf dtb-rockchip-${kernel_outname}.tar.gz *
-        mv -f *.tar.gz ${output_path}/${kernel_version}
-        echo -e "${SUCCESS} The [ dtb-rockchip-${kernel_outname}.tar.gz ] file packaged successfully."
     }
 }
 
@@ -1308,20 +1283,14 @@ POSTINST
 create_debs_dtb() {
     cd ${output_path}
 
-    # 04. Create linux-dtb deb packages for each platform
+    # 04. Create linux-dtb deb packages for amlogic/meson64 only
     echo -e "${STEPS} Creating the [ linux-dtb ] deb packages..."
 
-    declare -A platform_family=(["amlogic"]="meson64" ["rockchip"]="rockchip64" ["allwinner"]="sunxi64")
-    platform_list=("amlogic" "rockchip" "allwinner")
-    for platform in "${platform_list[@]}"; do
-        dtb_source="${output_path}/dtb/${platform}"
-        family="${platform_family[${platform}]}"
-        # Check if dtb files exist for this platform (at least 30 files)
-        dtb_count="$(ls ${dtb_source}/*.dtb 2>/dev/null | wc -l)"
-        if [[ "${dtb_count}" -le "30" ]]; then
-            echo -e "${INFO} No DTB files for ${family} (${platform}), skipping..."
-            continue
-        fi
+    platform="amlogic"
+    family="meson64"
+    dtb_source="${output_path}/dtb/${platform}"
+    dtb_count="$(ls ${dtb_source}/*.dtb 2>/dev/null | wc -l)"
+    if [[ "${dtb_count}" -ge "1" ]]; then
 
         #echo -e "${INFO} Creating linux-dtb-${family} deb package..."
         dtb_pkg="linux-dtb-${family}${custom_name}"
@@ -1407,7 +1376,7 @@ EOF
         dtb_deb="linux-dtb-${family}_${pkg_version}-${pkg_revision}${custom_name}_${pkg_arch}.deb"
         dpkg-deb -Zxz --build ${dtb_dir} ${deb_path}/${dtb_deb} >/dev/null
         [[ "${?}" -eq "0" ]] && echo -e "${SUCCESS} The [ ${dtb_deb} ] file packaged successfully."
-    done
+    fi
 }
 
 create_debs() {

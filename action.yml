@@ -66,9 +66,9 @@ inputs:
     required: false
     default: "all"
   kernel_sign:
-    description: "Set the kernel custom signature"
+    description: "Set the kernel custom signature (default: -leftymods)"
     required: false
-    default: "-ophub"
+    default: "-leftymods"
   kernel_toolchain:
     description: "Select the compilation toolchain"
     required: false

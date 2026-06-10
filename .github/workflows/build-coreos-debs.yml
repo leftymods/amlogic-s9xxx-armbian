@@ -131,23 +131,40 @@ jobs:
       - name: Patch branding to CoreOS
         working-directory: /builder/build
         run: |
-          grep -rl "Armbian" lib/ config/ extensions/ tools/ --include="*.sh" --include="*.conf" --include="*.config" \
-            --include="*.json" --include="*.php" 2>/dev/null | while read f; do
+          # 1. Replace Armbian -> CoreOS in ALL text files across the entire tree
+          find . -type f \( -name "*.sh" -o -name "*.conf" -o -name "*.config" \
+            -o -name "*.json" -o -name "*.php" -o -name "*.php" -o -name "*.xml" \
+            -o -name "*.txt" -o -name "*.md" -o -name "*.html" -o -name "*.c" \
+            -o -name "*.h" -o -name "*.inc" -o -name "*.module" -o -name "*.install" \
+            -o -name "*.theme" -o -name "*.css" -o -name "*.js" -o -name "*.py" \) \
+            2>/dev/null | while read f; do
             sed -i 's/Armbian/CoreOS/g; s/armbian/coreos/g; s/ARMBIAN/COREOS/g' "$f" 2>/dev/null || true
           done
-          grep -rl "armbian" config/ --include="*.conf" --include="*.sh" 2>/dev/null | while read f; do
-            sed -i 's/armbian/coreos/g; s/Armbian/CoreOS/g' "$f" 2>/dev/null || true
-          done
-          find . -name "control" -path "*/DEBIAN/*" | while read f; do
-            sed -i 's/Maintainer:.*/Maintainer: leftymods <ggalab33@gmail.com>/' "$f" 2>/dev/null || true
-          done
-          find . -name "*.sh" | while read f; do
+          # 2. Replace armbian- commands with coreos- in all files
+          find . -type f 2>/dev/null | while read f; do
             sed -i 's/armbian-/coreos-/g' "$f" 2>/dev/null || true
           done
-          find . -name "control" | while read f; do
+          # 3. Fix package names and maintainer in DEBIAN control files
+          find . -name "control" -path "*/DEBIAN/*" 2>/dev/null | while read f; do
+            sed -i 's/Maintainer:.*/Maintainer: leftymods <ggalab33@gmail.com>/' "$f" 2>/dev/null || true
             sed -i 's/Package: armbian-/Package: coreos-/g' "$f" 2>/dev/null || true
           done
-          echo "Branding patched to CoreOS by leftymods"
+          # 4. Fix initramfs hooks and scripts that print "Armbian:" banner
+          find . -type f \( -path "*/initramfs*" -o -path "*/initrd*" \) \
+            2>/dev/null | while read f; do
+            sed -i 's/Armbian:/CoreOS:/g; s/armbian:/coreos:/g' "$f" 2>/dev/null || true
+          done
+          # 5. Fix armbianEnv.txt -> coreosEnv.txt references
+          find . -type f 2>/dev/null | while read f; do
+            sed -i 's/armbianEnv\.txt/coreosEnv.txt/g' "$f" 2>/dev/null || true
+            sed -i 's/armbian_first_run/coreos_first_run/g' "$f" 2>/dev/null || true
+          done
+          # 6. Rename files and symlinks containing "armbian"
+          find . -name "*armbian*" 2>/dev/null | while read f; do
+            newname="$(echo "$f" | sed 's/armbian/coreos/g; s/Armbian/CoreOS/g')"
+            [[ "$f" != "$newname" ]] && mv -f "$f" "$newname" 2>/dev/null || true
+          done
+          echo "Branding fully patched to CoreOS by leftymods"
 
       - name: Enable QEMU for cross-compilation
         run: |
