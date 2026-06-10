@@ -23,22 +23,19 @@ on:
         description: "Set the base board name"
         required: false
         default: "odroidn2"
-      uboot_board:
-        description: "Set u-boot board target"
-        required: false
-        default: "all"
 
-      # Kernel source section
-      kernel_source_mode:
-        description: "Kernel source: compile or use pre-built from Releases"
+      # Kernel: compile or use pre-built
+      kernel_from_releases:
+        description: "Use pre-built kernel from Releases"
         required: false
-        default: "compile"
-        type: choice
-        options:
-          - compile
-          - from_releases
+        default: false
+        type: boolean
+      kernel_release_tag:
+        description: "Kernel Release tag (required if ☑ above, e.g. kernel_stable)"
+        required: false
+        default: ""
       kernel_version:
-        description: "Kernel version (for compile mode)"
+        description: "Kernel version (used when compiling)"
         required: false
         default: "6.12.y"
         type: choice
@@ -48,29 +45,22 @@ on:
           - 6.12.y
           - 6.18.y
       kernel_toolchain:
-        description: "Kernel toolchain (for compile mode)"
+        description: "Kernel toolchain (used when compiling)"
         required: false
         default: "gcc"
         type: choice
         options:
           - gcc
           - clang
-      kernel_release_tag:
-        description: "Kernel Release tag to use (e.g. kernel_stable)"
-        required: false
-        default: ""
 
-      # Rootfs source section
-      rootfs_source_mode:
-        description: "Rootfs source: build or use pre-built from Releases"
+      # Rootfs: build or use pre-built
+      rootfs_from_releases:
+        description: "Use pre-built rootfs from Releases"
         required: false
-        default: "build"
-        type: choice
-        options:
-          - build
-          - from_releases
+        default: false
+        type: boolean
       rootfs_release_tag:
-        description: "Rootfs Release tag to use (e.g. CoreOS_Nebula_2025.03)"
+        description: "Rootfs Release tag (required if ☑ above, e.g. CoreOS_Nebula_2025.03)"
         required: false
         default: ""
 
@@ -157,7 +147,7 @@ jobs:
       # ============================================================
       - name: Download kernel from Releases
         id: kernel_dl
-        if: ${{ inputs.kernel_source_mode == 'from_releases' && inputs.kernel_release_tag != '' }}
+        if: ${{ inputs.kernel_from_releases == 'true' && inputs.kernel_release_tag != '' }}
         working-directory: /builder
         run: |
           TAG="${{ inputs.kernel_release_tag }}"
@@ -189,7 +179,7 @@ jobs:
       # ============================================================
       - name: Clone build system
         id: clone
-        if: ${{ inputs.rootfs_source_mode == 'build' }}
+        if: ${{ inputs.rootfs_from_releases != 'true' }}
         working-directory: /builder
         run: |
           git clone -q --single-branch --depth=1 --branch=main https://github.com/armbian/build.git build
@@ -197,7 +187,7 @@ jobs:
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Patch branding to CoreOS
-        if: ${{ inputs.rootfs_source_mode == 'build' }}
+        if: ${{ inputs.rootfs_from_releases != 'true' }}
         working-directory: /builder/build
         run: |
           grep -rl "Armbian" lib/ config/ extensions/ tools/ --include="*.sh" --include="*.conf" --include="*.config" \
@@ -223,7 +213,7 @@ jobs:
       # ============================================================
       - name: Download rootfs from Releases
         id: rootfs_dl
-        if: ${{ inputs.rootfs_source_mode == 'from_releases' && inputs.rootfs_release_tag != '' }}
+        if: ${{ inputs.rootfs_from_releases == 'true' && inputs.rootfs_release_tag != '' }}
         working-directory: /builder
         run: |
           TAG="${{ inputs.rootfs_release_tag }}"
@@ -267,7 +257,7 @@ jobs:
           echo "rootfs_asset=$(ls *.img 2>/dev/null | head -n 1)" >> ${GITHUB_ENV}
 
       - name: Enable QEMU for cross-compilation
-        if: ${{ inputs.rootfs_source_mode == 'build' }}
+        if: ${{ inputs.rootfs_from_releases != 'true' }}
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
 
@@ -276,7 +266,7 @@ jobs:
       # ============================================================
       - name: Build CoreOS from source [ ${{ needs.setup.outputs.codename }} ]
         id: compile
-        if: ${{ inputs.rootfs_source_mode == 'build' }}
+        if: ${{ inputs.rootfs_from_releases != 'true' }}
         working-directory: /builder/build
         run: |
           config_board="${{ inputs.config_board }}"
@@ -312,7 +302,7 @@ jobs:
           make_args+=(-a "true")
 
           # If kernel was downloaded from releases, point to local files
-          if [[ "${{ inputs.kernel_source_mode }}" == "from_releases" ]]; then
+          if [[ "${{ inputs.kernel_from_releases }}" == "true" ]]; then
             make_args+=(-r "local")
             export LOCAL_KERNEL_PATH="/builder/kernel_dl"
           fi
