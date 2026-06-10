@@ -1,28 +1,13 @@
 #==========================================================================
-# Build CoreOS BSP deb packages only
+# Build CoreOS BSP packages from this repository
 # Author: leftymods
 #==========================================================================
 
-name: Build CoreOS BSP deb packages
+name: Build CoreOS BSP packages
 
 on:
   repository_dispatch:
   workflow_dispatch:
-    inputs:
-      set_release:
-        description: "Select OS Release"
-        required: false
-        default: "trixie"
-        type: choice
-        options:
-          - trixie
-          - bookworm
-          - resolute
-          - noble
-      config_board:
-        description: "Set the base board name"
-        required: false
-        default: "odroidn2"
 
 env:
   TZ: Etc/UTC
@@ -32,146 +17,36 @@ jobs:
     runs-on: ubuntu-24.04
     if: ${{ github.event.repository.owner.id == github.event.sender.id }}
 
-    name: coreos-bsp-${{ inputs.set_release }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Initialize build environment
-        id: init
-        env:
-          DEBIAN_FRONTEND: noninteractive
+      - name: Package BSP files
+        id: pack
         run: |
-          docker rmi -f $(docker images -q) 2>/dev/null || true
-          [[ -n "${AGENT_TOOLSDIRECTORY}" ]] && sudo rm -rf "${AGENT_TOOLSDIRECTORY}"
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
-          sudo swapoff -a
-          sudo rm -f /swapfile /mnt/swapfile
-          sudo -E apt-get -y update
-          sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
-          sudo -E apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2404-build-armbian-depends)
-          sudo -E systemctl daemon-reload
-          sudo -E apt-get -y autoremove --purge
-          sudo -E apt-get clean
-          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
-          sudo rm -rf ~/{.cargo,.dotnet,.rustup}
-          sudo -E timedatectl set-timezone "${TZ:-Etc/UTC}"
-          sudo -E ntpdate ntp.ubuntu.com 0.pool.ntp.org || true
-          sudo -E timedatectl set-ntp true
-          date -u
+          cd build-coreos
+          tar -czf coreos-bsp-files.tar.gz coreos-files/
+          mkdir -p /builder/output
+          cp coreos-bsp-files.tar.gz /builder/output/
+          ls -lh /builder/output/
+
+          echo "build_tag=CoreOS_BSP_arm64_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Create virtual disk for extended storage
-        run: |
-          mnt_size=$(expr $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 1)
-          root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 4)
-          sudo truncate -s "${mnt_size}"G /mnt/mnt.img
-          sudo truncate -s "${root_size}"G /root.img
-          sudo losetup /dev/loop6 /mnt/mnt.img
-          sudo losetup /dev/loop7 /root.img
-          sudo pvcreate /dev/loop6
-          sudo pvcreate /dev/loop7
-          sudo vgcreate github /dev/loop6 /dev/loop7
-          sudo lvcreate -n runner -l 100%FREE github
-          sudo mkfs.xfs -f -i sparse=0 -b size=4096 /dev/github/runner
-          sudo mkdir -p /builder
-          sudo mount /dev/github/runner /builder
-          sudo chown -R runner:runner /builder
-          df -Th
-          echo "status=success" >> ${GITHUB_OUTPUT}
-
-      - name: Clone build system
-        id: clone
-        working-directory: /builder
-        run: |
-          git clone -q --single-branch --depth=1 --branch=main https://github.com/armbian/build.git build
-          ln -sf /builder/build ${{ github.workspace }}/build
-          echo "status=success" >> ${GITHUB_OUTPUT}
-
-      - name: Patch branding to CoreOS
-        working-directory: /builder/build
-        run: |
-          find . -type f \( -name "*.sh" -o -name "*.conf" -o -name "*.config" \
-            -o -name "*.json" -o -name "*.php" -o -name "*.xml" \
-            -o -name "*.txt" -o -name "*.md" -o -name "*.html" -o -name "*.c" \
-            -o -name "*.h" -o -name "*.inc" -o -name "*.module" -o -name "*.install" \
-            -o -name "*.theme" -o -name "*.css" -o -name "*.js" -o -name "*.py" \) \
-            2>/dev/null | while read f; do
-            sed -i 's/Armbian/CoreOS/g; s/armbian/coreos/g; s/ARMBIAN/COREOS/g' "$f" 2>/dev/null || true
-          done
-          find . -type f 2>/dev/null | while read f; do
-            sed -i 's/armbian-/coreos-/g' "$f" 2>/dev/null || true
-          done
-          find . -name "control" -path "*/DEBIAN/*" 2>/dev/null | while read f; do
-            sed -i 's/Maintainer:.*/Maintainer: leftymods/' "$f" 2>/dev/null || true
-            sed -i 's/Package: armbian-/Package: coreos-/g' "$f" 2>/dev/null || true
-          done
-          find . -type f \( -path "*/initramfs*" -o -path "*/initrd*" \) \
-            2>/dev/null | while read f; do
-            sed -i 's/Armbian:/CoreOS:/g; s/armbian:/coreos:/g' "$f" 2>/dev/null || true
-          done
-          find . -type f 2>/dev/null | while read f; do
-            sed -i 's/armbianEnv\.txt/coreosEnv.txt/g' "$f" 2>/dev/null || true
-            sed -i 's/armbian_first_run/coreos_first_run/g' "$f" 2>/dev/null || true
-          done
-          find . -name "*armbian*" 2>/dev/null | while read f; do
-            newname="$(echo "$f" | sed 's/armbian/coreos/g; s/Armbian/CoreOS/g')"
-            [[ "$f" != "$newname" ]] && mv -f "$f" "$newname" 2>/dev/null || true
-          done
-          echo "Branding patched to CoreOS by leftymods"
-
-      - name: Enable QEMU for cross-compilation
-        run: |
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
-
-      - name: Build BSP deb packages
-        id: compile
-        working-directory: /builder/build
-        run: |
-          config_board="${{ inputs.config_board }}"
-          [[ -z "${config_board}" ]] && config_board="odroidn2"
-
-          ./compile.sh RELEASE=${{ inputs.set_release }} BOARD=${config_board} BRANCH=current \
-                       BUILD_MINIMAL=no BUILD_ONLY=debs HOST=coreos \
-                       BUILD_DESKTOP=no EXPERT=yes KERNEL_CONFIGURE=no \
-                       COMPRESS_OUTPUTIMAGE="sha" SHARE_LOG=yes
-
-          echo "status=success" >> ${GITHUB_OUTPUT}
-
-      - name: Collect BSP deb packages only
-        id: collect
-        run: |
-          mkdir -p /builder/debs/bsp
-
-          if [[ -d "/builder/build/output/debs" ]]; then
-            find "/builder/build/output/debs" -name "*bsp*" -exec cp -v {} /builder/debs/bsp/ \;
-          fi
-
-          echo "Collected BSP debs:"
-          ls -lh /builder/debs/bsp/ 2>/dev/null || echo "No BSP debs found"
-
-          cd /builder/debs
-          tar -czf coreos-bsp-debs.tar.gz bsp 2>/dev/null || true
-          ls -lh /builder/debs/
-
-          echo "build_tag=CoreOS_BSP_${{ inputs.set_release }}_arm64_$(date +"%Y.%m")" >> ${GITHUB_ENV}
-          echo "status=success" >> ${GITHUB_OUTPUT}
-
-      - name: Upload BSP deb packages to Release
+      - name: Upload BSP packages to Release
         uses: ophub/upload-to-releases@main
-        if: ${{ steps.collect.outputs.status == 'success' && !cancelled() }}
+        if: ${{ steps.pack.outputs.status == 'success' && !cancelled() }}
         with:
           tag: ${{ env.build_tag }}
-          artifacts: /builder/debs/*
+          artifacts: /builder/output/*
           allow_updates: true
           remove_artifacts: false
           replaces_artifacts: true
           make_latest: false
           gh_token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            ### CoreOS BSP Deb Packages
+            ### CoreOS BSP Packages
             - Developer: leftymods
-            - coreos-bsp-cli-* — Board support package
+            - coreos-bsp-files.tar.gz — Board support files (scripts, configs, boot files)
             ### Applicable Platform
             - 🐧 `arm64`
