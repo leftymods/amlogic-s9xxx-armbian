@@ -1,0 +1,245 @@
+#==========================================================================
+# Description: Build CoreOS full OS image with kernel, u-boot, BSP debs
+# Author: leftymods
+#==========================================================================
+
+name: Build CoreOS
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      set_release:
+        description: "Select OS Release"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - trixie
+          - bookworm
+          - resolute
+          - noble
+      config_board:
+        description: "Set the base board name"
+        required: false
+        default: "odroidn2"
+      uboot_board:
+        description: "Set u-boot board target"
+        required: false
+        default: "all"
+      kernel_version:
+        description: "Select kernel version"
+        required: false
+        default: "6.12.y"
+        type: choice
+        options:
+          - 6.1.y
+          - 6.6.y
+          - 6.12.y
+          - 6.18.y
+      kernel_toolchain:
+        description: "Select kernel toolchain"
+        required: false
+        default: "gcc"
+        type: choice
+        options:
+          - gcc
+          - clang
+
+env:
+  TZ: Etc/UTC
+
+jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set build matrix
+        id: set-matrix
+        run: |
+          if [[ "${{ inputs.set_release }}" == "all" ]]; then
+            MATRIX='{"include":[{"release":"trixie"},{"release":"bookworm"},{"release":"resolute"},{"release":"noble"}]}'
+          else
+            MATRIX='{"include":[{"release":"${{ inputs.set_release }}"}]}'
+          fi
+          echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
+
+  build:
+    needs: setup
+    runs-on: ubuntu-24.04
+    if: ${{ github.event.repository.owner.id == github.event.sender.id }}
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+
+    name: coreos-${{ matrix.release }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Initialize build environment
+        id: init
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          docker rmi -f $(docker images -q) 2>/dev/null || true
+          [[ -n "${AGENT_TOOLSDIRECTORY}" ]] && sudo rm -rf "${AGENT_TOOLSDIRECTORY}"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
+          sudo swapoff -a
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo -E apt-get -y update
+          sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+          sudo -E apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2404-build-armbian-depends)
+          sudo -E systemctl daemon-reload
+          sudo -E apt-get -y autoremove --purge
+          sudo -E apt-get clean
+          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+          sudo rm -rf ~/{.cargo,.dotnet,.rustup}
+          sudo -E timedatectl set-timezone "${TZ:-Etc/UTC}"
+          sudo -E ntpdate ntp.ubuntu.com 0.pool.ntp.org || true
+          sudo -E timedatectl set-ntp true
+          date -u
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Create virtual disk for extended storage
+        run: |
+          mnt_size=$(expr $(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 1)
+          root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 4)
+          sudo truncate -s "${mnt_size}"G /mnt/mnt.img
+          sudo truncate -s "${root_size}"G /root.img
+          sudo losetup /dev/loop6 /mnt/mnt.img
+          sudo losetup /dev/loop7 /root.img
+          sudo pvcreate /dev/loop6
+          sudo pvcreate /dev/loop7
+          sudo vgcreate github /dev/loop6 /dev/loop7
+          sudo lvcreate -n runner -l 100%FREE github
+          sudo mkfs.xfs -f -i sparse=0 -b size=4096 /dev/github/runner
+          sudo mkdir -p /builder
+          sudo mount /dev/github/runner /builder
+          sudo chown -R runner:runner /builder
+          df -Th
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Clone Armbian build system
+        id: clone
+        working-directory: /builder
+        run: |
+          git clone -q --single-branch --depth=1 --branch=main https://github.com/armbian/build.git build
+          ln -sf /builder/build ${{ github.workspace }}/build
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Patch branding to CoreOS
+        working-directory: /builder/build
+        run: |
+          # Replace branding across the build system
+          grep -rl "Armbian" lib/ config/ extensions/ tools/ --include="*.sh" --include="*.conf" --include="*.config" \
+            --include="*.json" --include="*.php" 2>/dev/null | while read f; do
+            sed -i 's/Armbian/CoreOS/g; s/armbian/coreos/g; s/ARMBIAN/COREOS/g' "$f" 2>/dev/null || true
+          done
+          grep -rl "armbian" config/ --include="*.conf" --include="*.sh" 2>/dev/null | while read f; do
+            sed -i 's/armbian/coreos/g; s/Armbian/CoreOS/g' "$f" 2>/dev/null || true
+          done
+          # Patch maintainer name
+          find . -name "control" -path "*/DEBIAN/*" | while read f; do
+            sed -i 's/Maintainer:.*/Maintainer: leftymods <ggalab33@gmail.com>/' "$f" 2>/dev/null || true
+          done
+          # Fix package names
+          find . -name "*.sh" | while read f; do
+            sed -i 's/armbian-/coreos-/g' "$f" 2>/dev/null || true
+          done
+          # Fix package name in control files
+          find . -name "control" | while read f; do
+            sed -i 's/Package: armbian-/Package: coreos-/g' "$f" 2>/dev/null || true
+          done
+          echo "Branding patched to CoreOS by leftymods"
+
+      - name: Enable QEMU for cross-compilation
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
+
+      - name: Build CoreOS [ ${{ matrix.release }} ]
+        id: compile
+        working-directory: /builder/build
+        run: |
+          config_board="${{ inputs.config_board }}"
+          [[ -z "${config_board}" ]] && config_board="odroidn2"
+
+          # Build full OS image with all deb packages
+          ./compile.sh RELEASE=${{ matrix.release }} BOARD=${config_board} BRANCH=current \
+                       BUILD_MINIMAL=no BUILD_ONLY=default HOST=coreos \
+                       BUILD_DESKTOP=no EXPERT=yes KERNEL_CONFIGURE=no \
+                       COMPRESS_OUTPUTIMAGE="sha" SHARE_LOG=yes \
+                       KERNEL_VERSION=${{ inputs.kernel_version }} \
+                       TOOLCHAIN=${{ inputs.kernel_toolchain }}
+
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Collect all deb packages
+        id: collect
+        working-directory: /builder/build
+        run: |
+          mkdir -p /builder/debs/coreos
+          DEB_STORAGE="output/debs"
+          if [[ -d "${DEB_STORAGE}" ]]; then
+            # Collect all generated .deb files
+            find "${DEB_STORAGE}" -name "*.deb" -exec cp -v {} /builder/debs/coreos/ \;
+          fi
+          # Also check common deb output directories
+          for d in output/images output/debs-cache .tmp/*/deb; do
+            if [[ -d "$d" ]]; then
+              find "$d" -name "*.deb" -exec cp -v {} /builder/debs/coreos/ \; 2>/dev/null || true
+            fi
+          done
+          echo "Collected debs:"
+          ls -lh /builder/debs/coreos/ 2>/dev/null || echo "No debs found"
+
+          # Create a summary
+          cd /builder/debs
+          tar -czf coreos-all-debs.tar.gz coreos
+          ls -lh /builder/debs/
+
+          echo "build_tag=CoreOS_${{ matrix.release }}_arm64_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Upload CoreOS image to Release
+        uses: ophub/upload-to-releases@main
+        if: ${{ steps.compile.outputs.status == 'success' && !cancelled() }}
+        with:
+          tag: ${{ env.build_tag }}
+          artifacts: /builder/build/output/images/*
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: true
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload CoreOS deb packages to Release
+        uses: ophub/upload-to-releases@main
+        if: ${{ steps.collect.outputs.status == 'success' && !cancelled() }}
+        with:
+          tag: ${{ env.build_tag }}
+          artifacts: /builder/debs/*
+          allow_updates: true
+          remove_artifacts: false
+          replaces_artifacts: true
+          make_latest: false
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ### CoreOS Image Information
+            - Developer: leftymods
+            - Default username: `root`
+            - Default password: `1234`
+            - Install command: `coreos-install`
+            - Update command: `coreos-update`
+            ### Included Debian Packages
+            - linux-image-* — Kernel image and modules
+            - linux-dtb-* — Device tree blobs
+            - linux-headers-* — Kernel headers
+            - linux-u-boot-* — U-Boot bootloader
+            - coreos-bsp-cli-* — Board support package
+            ### Applicable Platform
+            - 🐧 `arm64`
