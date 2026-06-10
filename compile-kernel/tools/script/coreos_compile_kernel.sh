@@ -193,7 +193,7 @@ init_var() {
         -n | --customName)
             if [[ -n "${2}" ]]; then
                 custom_name="${2// /}"
-                [[ -n "${custom_name}" ]] || custom_name="-ophub"
+                [[ -n "${custom_name}" ]] || custom_name="-leftymods"
                 [[ "${custom_name:0:1}" != "-" ]] && custom_name="-${custom_name}"
                 shift 2
             else
