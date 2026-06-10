@@ -5,11 +5,11 @@
 # License version 2. This program is licensed "as is" without any
 # warranty of any kind, whether express or implied.
 #
-# This file is a part of the Rebuild Armbian
-# https://github.com/ophub/amlogic-s9xxx-armbian
+# This file is a part of the Rebuild CoreOS
+# https://github.com/leftymods/amlogic-s9xxx-armbian
 #
-# Description: Custom startup script for Armbian Docker container.
-# Copyright (C) 2021- https://github.com/ophub/amlogic-s9xxx-armbian
+# Description: Custom startup script for CoreOS Docker container.
+# Copyright (C) 2021- https://github.com/leftymods/amlogic-s9xxx-armbian
 #
 #======================== [Container Initialization Section] ========================
 #

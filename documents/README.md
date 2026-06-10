@@ -1,26 +1,26 @@
-# Armbian Build and Usage Guide
+# CoreOS Build and Usage Guide
 
 [English Instructions](README.md) | [中文说明](README.cn.md) | [日本語説明](README.ja.md)
 
-GitHub Actions is a CI/CD service from Microsoft that provides high-performance virtual server environments for building, testing, packaging, and deploying projects. Public repositories can use it free of charge with no time limit, and each build can run for up to 6 hours — more than sufficient for compiling Armbian (typically completed within about 3 hours). This project is shared for educational and experience-exchange purposes. Please do not initiate any harmful network attacks or misuse GitHub Actions.
+GitHub Actions is a CI/CD service from Microsoft that provides high-performance virtual server environments for building, testing, packaging, and deploying projects. Public repositories can use it free of charge with no time limit, and each build can run for up to 6 hours — more than sufficient for compiling CoreOS (typically completed within about 3 hours). This project is shared for educational and experience-exchange purposes. Please do not initiate any harmful network attacks or misuse GitHub Actions.
 
 # Table of Contents
 
-- [Armbian Build and Usage Guide](#armbian-build-and-usage-guide)
+- [CoreOS Build and Usage Guide](#coreos-build-and-usage-guide)
 - [Table of Contents](#table-of-contents)
   - [1. Register your own Github account](#1-register-your-own-github-account)
   - [2. Set up private variable GITHUB\_TOKEN etc](#2-set-up-private-variable-github_token-etc)
   - [3. Fork the repository and set Workflow permissions](#3-fork-the-repository-and-set-workflow-permissions)
-  - [4. Customization instructions for personalized Armbian system files](#4-customization-instructions-for-personalized-armbian-system-files)
+  - [4. Customization instructions for personalized CoreOS system files](#4-customization-instructions-for-personalized-coreos-system-files)
   - [5. Compile the system](#5-compile-the-system)
     - [5.1 Manual Compilation](#51-manual-compilation)
     - [5.2 Scheduled Compilation](#52-scheduled-compilation)
     - [5.3 Customizing Default System Configuration](#53-customizing-default-system-configuration)
     - [5.4 Expanding Github Actions Compilation Space Using Logical Volumes](#54-expanding-github-actions-compilation-space-using-logical-volumes)
-    - [5.5 Build Armbian Docker image](#55-build-armbian-docker-image)
+    - [5.5 Build CoreOS Docker image](#55-build-coreos-docker-image)
   - [6. Saving the System](#6-saving-the-system)
   - [7. Downloading the System](#7-downloading-the-system)
-  - [8. Installing Armbian to EMMC](#8-installing-armbian-to-emmc)
+  - [8. Installing CoreOS to EMMC](#8-installing-coreos-to-emmc)
     - [8.1 Installation Method for Amlogic Series](#81-installation-method-for-amlogic-series)
     - [8.2 Installation Method for Rockchip Series](#82-installation-method-for-rockchip-series)
       - [8.2.1 Installation Method for Radxa-Rock5B](#821-installation-method-for-radxa-rock5b)
@@ -33,25 +33,25 @@ GitHub Actions is a CI/CD service from Microsoft that provides high-performance 
       - [8.2.5 Installation method for Chainedbox-L1-Pro](#825-installation-method-for-chainedbox-l1-pro)
       - [8.2.6 Installation method for lckfb-tspi](#826-installation-method-for-lckfb-tspi)
     - [8.3 Allwinner Series Installation Method](#83-allwinner-series-installation-method)
-    - [8.4 Installation Method for the Docker Version of Armbian](#84-installation-method-for-the-docker-version-of-armbian)
+    - [8.4 Installation Method for the Docker Version of CoreOS](#84-installation-method-for-the-docker-version-of-coreos)
       - [8.4.1 Install Docker Runtime Environment](#841-install-docker-runtime-environment)
       - [8.4.2 Configure macvlan Network](#842-configure-macvlan-network)
-      - [8.4.3 Run Armbian Docker Container](#843-run-armbian-docker-container)
-  - [9. Compiling Armbian Kernel](#9-compiling-armbian-kernel)
+      - [8.4.3 Run CoreOS Docker Container](#843-run-coreos-docker-container)
+  - [9. Compiling CoreOS Kernel](#9-compiling-coreos-kernel)
     - [9.1 How to Add Custom Kernel Patches](#91-how-to-add-custom-kernel-patches)
     - [9.2 How to Make Kernel Patches](#92-how-to-make-kernel-patches)
     - [9.3 How to Customize Compilation of Driver Modules](#93-how-to-customize-compilation-of-driver-modules)
-  - [10. Updating Armbian Kernel](#10-updating-armbian-kernel)
+  - [10. Updating CoreOS Kernel](#10-updating-coreos-kernel)
   - [11. Installing Common Software](#11-installing-common-software)
   - [12. Frequently Asked Questions](#12-frequently-asked-questions)
     - [12.1 dtb and u-boot Correspondence Table for Each Box](#121-dtb-and-u-boot-correspondence-table-for-each-box)
     - [12.2 Instructions for LED Screen Display Control](#122-instructions-for-led-screen-display-control)
     - [12.3 How to Restore the Original Android TV System](#123-how-to-restore-the-original-android-tv-system)
-      - [12.3.1 Backup and Restore Using Armbian-ddbr](#1231-backup-and-restore-using-armbian-ddbr)
+      - [12.3.1 Backup and Restore Using CoreOS-ddbr](#1231-backup-and-restore-using-coreos-ddbr)
       - [12.3.2 Recovering using Amlogic Flashing Tool](#1232-recovering-using-amlogic-flashing-tool)
     - [12.4 Setting the box to boot from USB/TF/SD](#124-setting-the-box-to-boot-from-usbtfsd)
-      - [12.4.1 Initial Installation of Armbian System](#1241-initial-installation-of-armbian-system)
-      - [12.4.2 Reinstallation of Armbian System](#1242-reinstallation-of-armbian-system)
+      - [12.4.1 Initial Installation of CoreOS System](#1241-initial-installation-of-coreos-system)
+      - [12.4.2 Reinstallation of CoreOS System](#1242-reinstallation-of-coreos-system)
     - [12.5 Disable Infrared Receiver](#125-disable-infrared-receiver)
     - [12.6 Boot file selection](#126-boot-file-selection)
     - [12.7 Network Configuration](#127-network-configuration)
@@ -115,45 +115,45 @@ Register an account to proceed with system customization. Click the `Sign up` bu
 
 According to the [GitHub Docs](https://docs.github.com/en/actions/security-guides/automatic-token-authentication), GitHub automatically creates a unique `GITHUB_TOKEN` secret at the start of every workflow job for use within the workflow. The `{{ secrets.GITHUB_TOKEN }}` can be used for authentication within the workflow job.
 
-When building an [Armbian Docker](../.github/workflows/build-armbian-arm64-docker-image.yml) image in Actions and pushing it to Docker Hub, you need to set two secrets: `DOCKERHUB_USERNAME` and `DOCKERHUB_PASSWORD`. On your repository's page, click Settings in the top right corner, then navigate to `Settings` > `Secrets and variables` > `Actions` > `Repository secrets` > `New repository secret`, add the following two secrets:
+When building an [CoreOS Docker](../.github/workflows/build-coreos-arm64-docker-image.yml) image in Actions and pushing it to Docker Hub, you need to set two secrets: `DOCKERHUB_USERNAME` and `DOCKERHUB_PASSWORD`. On your repository's page, click Settings in the top right corner, then navigate to `Settings` > `Secrets and variables` > `Actions` > `Repository secrets` > `New repository secret`, add the following two secrets:
 
 - Secret name `DOCKERHUB_USERNAME`: The value is your username for logging into Docker Hub.
 - Secret name `DOCKERHUB_PASSWORD`: The value is your password for logging into Docker Hub.
 
 ## 3. Fork the repository and set Workflow permissions
 
-Fork the repository by opening https://github.com/ophub/amlogic-s9xxx-armbian and clicking the Fork button in the upper right to copy the repository to your account. Once the fork is complete, navigate to your copy. Then go to `Settings` > `Actions` > `General` > `Workflow permissions` in the left navigation bar and save. The illustration is as follows:
+Fork the repository by opening https://github.com/leftymods/amlogic-s9xxx-armbian and clicking the Fork button in the upper right to copy the repository to your account. Once the fork is complete, navigate to your copy. Then go to `Settings` > `Actions` > `General` > `Workflow permissions` in the left navigation bar and save. The illustration is as follows:
 
 <div style="width:100%;margin-top:40px;margin:5px;">
 <img src=https://user-images.githubusercontent.com/68696949/167585338-841d3b05-8d98-4d73-ba72-475aad4a95a9.png width="300" />
 </div>
 
-## 4. Customization instructions for personalized Armbian system files
+## 4. Customization instructions for personalized CoreOS system files
 
-The system compilation process is controlled in the [.github/workflows/build-armbian-arm64-server-image.yml](../.github/workflows/build-armbian-arm64-server-image.yml) file. Additional .yml files in the workflows directory handle other functions. The system is compiled using Armbian's current official source code. Refer to the official documentation for parameter details.
+The system compilation process is controlled in the [.github/workflows/build-coreos-arm64-server-image.yml](../.github/workflows/build-coreos-arm64-server-image.yml) file. Additional .yml files in the workflows directory handle other functions. The system is compiled using CoreOS's current official source code. Refer to the official documentation for parameter details.
 
 ```yaml
-- name: Compile Armbian [ ${{ inputs.set_release }} ]
+- name: Compile CoreOS [ ${{ inputs.set_release }} ]
   id: compile
   if: ${{ steps.down.outputs.status }} == 'success' && !cancelled()
   run: |
-    # Compile method and parameter description: https://docs.armbian.com/Developer-Guide_Build-Options
+    # Compile method and parameter description: https://docs.coreos.com/Developer-Guide_Build-Options
     cd build/
         ./compile.sh RELEASE=${{ inputs.set_release }} BOARD=odroidn2 BRANCH=current BUILD_MINIMAL=no \
-                      BUILD_ONLY=default HOST=armbian BUILD_DESKTOP=no EXPERT=yes KERNEL_CONFIGURE=no \
+                      BUILD_ONLY=default HOST=coreos BUILD_DESKTOP=no EXPERT=yes KERNEL_CONFIGURE=no \
                       COMPRESS_OUTPUTIMAGE="sha" SHARE_LOG=yes
     echo "status=success" >> ${GITHUB_OUTPUT}
 ```
 
-When building Armbian with `ophub`, the `armbian_files` parameter allows you to add or overwrite custom files in the [common-files](https://github.com/ophub/amlogic-s9xxx-armbian/tree/main/build-armbian/armbian-files/common-files) directory. The directory structure must strictly mirror the Armbian root filesystem to ensure files are correctly overlaid into the firmware (e.g., default configuration files should be placed under the `etc/default/` subdirectory). Example configuration:
+When building CoreOS with `ophub`, the `coreos_files` parameter allows you to add or overwrite custom files in the [common-files](https://github.com/leftymods/amlogic-s9xxx-armbian/tree/main/build-coreos/coreos-files/common-files) directory. The directory structure must strictly mirror the CoreOS root filesystem to ensure files are correctly overlaid into the firmware (e.g., default configuration files should be placed under the `etc/default/` subdirectory). Example configuration:
 
 ```yaml
-- name: Rebuild Armbian
-  uses: ophub/amlogic-s9xxx-armbian@main
+- name: Rebuild CoreOS
+  uses: leftymods/amlogic-s9xxx-armbian@main
   with:
-    build_target: armbian
-    armbian_path: build/output/images/*.img.gz
-    armbian_files: files
+    build_target: coreos
+    coreos_path: build/output/images/*.img.gz
+    coreos_files: files
     ...
 ```
 
@@ -163,7 +163,7 @@ The system can be compiled manually, on a schedule, or triggered by specific eve
 
 ### 5.1 Manual Compilation
 
-In your repository's navigation bar, click the Actions button, then select Build armbian > Run workflow > Run workflow to start compilation. The process takes approximately 3 hours and is complete once all steps finish. The illustration is as follows:
+In your repository's navigation bar, click the Actions button, then select Build coreos > Run workflow > Run workflow to start compilation. The process takes approximately 3 hours and is complete once all steps finish. The illustration is as follows:
 
 <div style="width:100%;margin-top:40px;margin:5px;">
 <img src=https://user-images.githubusercontent.com/68696949/163203938-e7762b09-e6b8-4cf5-b1f1-9c67c1a29953.png width="300" />
@@ -173,7 +173,7 @@ In your repository's navigation bar, click the Actions button, then select Build
 
 ### 5.2 Scheduled Compilation
 
-In the [.github/workflows/build-armbian-arm64-server-image.yml](../.github/workflows/build-armbian-arm64-server-image.yml) file, use Cron to configure scheduled compilation. The five fields represent minutes (0–59) / hours (0–23) / day of month (1–31) / month (1–12) / day of week (0–6, Sunday–Saturday). Modify values as needed. The system uses UTC by default; convert to your local time zone accordingly.
+In the [.github/workflows/build-coreos-arm64-server-image.yml](../.github/workflows/build-coreos-arm64-server-image.yml) file, use Cron to configure scheduled compilation. The five fields represent minutes (0–59) / hours (0–23) / day of month (1–31) / month (1–12) / day of week (0–6, Sunday–Saturday). Modify values as needed. The system uses UTC by default; convert to your local time zone accordingly.
 
 ```yaml
 schedule:
@@ -182,15 +182,15 @@ schedule:
 
 ### 5.3 Customizing Default System Configuration
 
-The default system configuration information is recorded in the [model_database.conf](../build-armbian/armbian-files/common-files/etc/model_database.conf) file, in which the `BOARD` name must be unique.
+The default system configuration information is recorded in the [model_database.conf](../build-coreos/coreos-files/common-files/etc/model_database.conf) file, in which the `BOARD` name must be unique.
 
-Devices with `BUILD` set to `yes` are included in the default build and can be used directly. Devices set to `no` are not packaged by default. To use an unpackaged device, download the Armbian system with the same `FAMILY`, write it to `USB`, then open the USB boot partition on your computer and modify the `FDT dtb name` in `/boot/uEnv.txt` to match your device.
+Devices with `BUILD` set to `yes` are included in the default build and can be used directly. Devices set to `no` are not packaged by default. To use an unpackaged device, download the CoreOS system with the same `FAMILY`, write it to `USB`, then open the USB boot partition on your computer and modify the `FDT dtb name` in `/boot/uEnv.txt` to match your device.
 
-For local compilation, use the `-b` parameter; for GitHub Actions, use the `armbian_board` parameter. `-b all` packages all devices with `BUILD` set to `yes`. Specifying a `BOARD` explicitly will package it regardless of its `BUILD` value. For example: `-b r68s_s905x3-tx3_s905l3a-cm311`.
+For local compilation, use the `-b` parameter; for GitHub Actions, use the `coreos_board` parameter. `-b all` packages all devices with `BUILD` set to `yes`. Specifying a `BOARD` explicitly will package it regardless of its `BUILD` value. For example: `-b r68s_s905x3-tx3_s905l3a-cm311`.
 
 ### 5.4 Expanding Github Actions Compilation Space Using Logical Volumes
 
-GitHub Actions provides 84GB of compile space by default, with approximately 50GB available after accounting for the system and required packages. When compiling all firmware, this may be insufficient. Use logical volumes to expand the compile space to approximately 110GB. Refer to the [.github/workflows/build-armbian-arm64-server-image.yml](../.github/workflows/build-armbian-arm64-server-image.yml) file and use the commands below to create a logical volume. Then use the logical volume path during compilation.
+GitHub Actions provides 84GB of compile space by default, with approximately 50GB available after accounting for the system and required packages. When compiling all firmware, this may be insufficient. Use logical volumes to expand the compile space to approximately 110GB. Refer to the [.github/workflows/build-coreos-arm64-server-image.yml](../.github/workflows/build-coreos-arm64-server-image.yml) file and use the commands below to create a logical volume. Then use the logical volume path during compilation.
 
 ```yaml
 - name: Create simulated physical disk
@@ -212,30 +212,30 @@ GitHub Actions provides 84GB of compile space by default, with approximately 50G
     df -Th
 ```
 
-### 5.5 Build Armbian Docker image
+### 5.5 Build CoreOS Docker image
 
-To create a [Docker](https://hub.docker.com/u/ophub) image of the Armbian system, refer to the [armbian_docker](../compile-kernel/tools/script/docker) build script.
+To create a [Docker](https://hub.docker.com/u/ophub) image of the CoreOS system, refer to the [coreos_docker](../compile-kernel/tools/script/docker) build script.
 
 ## 6. Saving the System
 
-System storage is also configured in the [.github/workflows/build-armbian-arm64-server-image.yml](../.github/workflows/build-armbian-arm64-server-image.yml) file. The compiled system is automatically uploaded to GitHub Releases via script.
+System storage is also configured in the [.github/workflows/build-coreos-arm64-server-image.yml](../.github/workflows/build-coreos-arm64-server-image.yml) file. The compiled system is automatically uploaded to GitHub Releases via script.
 
 ```yaml
-- name: Upload Armbian image to Release
+- name: Upload CoreOS image to Release
   uses: ophub/upload-to-release@main
   if: ${{ env.PACKAGED_STATUS }} == 'success' && !cancelled()
   with:
-    tag: Armbian_${{ env.ARMBIAN_RELEASE }}_${{ env.PACKAGED_OUTPUTDATE }}
+    tag: CoreOS_${{ env.COREOS_RELEASE }}_${{ env.PACKAGED_OUTPUTDATE }}
     artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
     allow_updates: true
     gh_token: ${{ secrets.GITHUB_TOKEN }}
     body: |
-      These are the Armbian OS image
+      These are the CoreOS OS image
       * OS information
       Default username: root
       Default password: 1234
-      Install command: armbian-install
-      Update command: armbian-update
+      Install command: coreos-install
+      Update command: coreos-update
 ```
 
 ## 7. Downloading the System
@@ -247,11 +247,11 @@ Navigate to the Releases section on the repository homepage and select the syste
 <img src=https://user-images.githubusercontent.com/68696949/163204879-4898babf-fa00-4e63-89ea-235129e2ce1d.png width="300" />
 </div>
 
-## 8. Installing Armbian to EMMC
+## 8. Installing CoreOS to EMMC
 
-Installation methods vary across Amlogic, Rockchip, and Allwinner platforms. Devices differ in storage options — some use external microSD cards, some have eMMC, and some support NVMe or other media. Each platform's installation method is described separately below. First, download the appropriate Armbian system image for your device from [Releases](https://github.com/ophub/amlogic-s9xxx-armbian/releases) and decompress it to .img format. Depending on your device, follow the corresponding installation method.
+Installation methods vary across Amlogic, Rockchip, and Allwinner platforms. Devices differ in storage options — some use external microSD cards, some have eMMC, and some support NVMe or other media. Each platform's installation method is described separately below. First, download the appropriate CoreOS system image for your device from [Releases](https://github.com/leftymods/amlogic-s9xxx-armbian/releases) and decompress it to .img format. Depending on your device, follow the corresponding installation method.
 
-After installation, connect the device to your `router` and allow `2 minutes` for it to boot. Then find the device's `IP` address (listed as Armbian) in your router's admin panel and connect via `SSH`. The default username is `root`, the default password is `1234`, and the default port is `22`.
+After installation, connect the device to your `router` and allow `2 minutes` for it to boot. Then find the device's `IP` address (listed as CoreOS) in your router's admin panel and connect via `SSH`. The default username is `root`, the default password is `1234`, and the default port is `22`.
 
 <div style="width:100%;margin-top:40px;margin:5px;">
 <img src=https://user-images.githubusercontent.com/68696949/202972715-addcd695-970a-43d6-8a34-24a9c4bc80a2.png width="600" /><br />
@@ -261,10 +261,10 @@ After installation, connect the device to your `router` and allow `2 minutes` fo
 
 ### 8.1 Installation Method for Amlogic Series
 
-Log in to the Armbian system (default user: root, default password: 1234) → Enter the command:
+Log in to the CoreOS system (default user: root, default password: 1234) → Enter the command:
 
 ```shell
-armbian-install
+coreos-install
 ```
 
 | Optional Parameter | Default Value | Options | Description                          |
@@ -273,7 +273,7 @@ armbian-install
 | -a                 | yes           | yes/no  | Use [ampart](https://github.com/7Ji/ampart) partition table adjustment tool |
 | -l                 | no            | yes/no  | List. Display the entire device list |
 
-Example: `armbian-install -m yes -a no`
+Example: `coreos-install -m yes -a no`
 
 ### 8.2 Installation Method for Rockchip Series
 
@@ -285,7 +285,7 @@ Radxa-Rock5B supports multiple storage media (microSD/eMMC/NVMe), each with a di
 
 ##### 8.2.1.1 Install the System to MicroSD
 
-Use Rufus, balenaEtcher, or a similar tool to write the Armbian system image to a microSD card, then insert it into the device.
+Use Rufus, balenaEtcher, or a similar tool to write the CoreOS system image to a microSD card, then insert it into the device.
 
 <div style="width:100%;margin-top:40px;margin:5px;">
 <img src=https://user-images.githubusercontent.com/68696949/202972996-300f223b-f6f6-48af-86ca-bdc842e5017d.png width="600" /><br />
@@ -294,14 +294,14 @@ Use Rufus, balenaEtcher, or a similar tool to write the Armbian system image to 
 
 ##### 8.2.1.2 Install the System to eMMC
 
-- Install via microSD card: Write the Armbian system image to a microSD card and boot the device from it. Upload the `armbian.img` file to the microSD card, then use `dd` to write it to eMMC:
+- Install via microSD card: Write the CoreOS system image to a microSD card and boot the device from it. Upload the `coreos.img` file to the microSD card, then use `dd` to write it to eMMC:
 
 ```Shell
-dd if=armbian.img  of=/dev/mmcblk1  bs=1M status=progress
+dd if=coreos.img  of=/dev/mmcblk1  bs=1M status=progress
 ```
 
-- Install via USB-to-eMMC card reader: Connect the eMMC module to your computer, use Rufus or balenaEtcher to write the Armbian system image to eMMC, then insert the eMMC module into the device.
-- Install via Maskrom mode: Power off the development board. Hold the gold button, then connect a USB-A to Type-C cable between the ROCK 5B Type-C port and your PC. Release the gold button. Verify that a MASKROM device is detected. Right-click in the blank area of the list and load the `rock-5b-emmc.cfg` configuration file (the configuration file and RKDevTool are in the same directory). Set `rk3588_spl_loader_v1.08.111.bin` and `Armbian.img` as shown below and begin writing.
+- Install via USB-to-eMMC card reader: Connect the eMMC module to your computer, use Rufus or balenaEtcher to write the CoreOS system image to eMMC, then insert the eMMC module into the device.
+- Install via Maskrom mode: Power off the development board. Hold the gold button, then connect a USB-A to Type-C cable between the ROCK 5B Type-C port and your PC. Release the gold button. Verify that a MASKROM device is detected. Right-click in the blank area of the list and load the `rock-5b-emmc.cfg` configuration file (the configuration file and RKDevTool are in the same directory). Set `rk3588_spl_loader_v1.08.111.bin` and `CoreOS.img` as shown below and begin writing.
 
 <div style="width:100%;margin-top:40px;margin:5px;">
 <img src=https://user-images.githubusercontent.com/68696949/202954823-3d3b1509-eedc-4192-91eb-017269c7f896.png width="200" /><br />
@@ -323,25 +323,25 @@ Power off the development board and remove all bootable devices (MicroSD cards, 
 <img src=https://user-images.githubusercontent.com/68696949/202961447-49c0941a-e233-4b2a-b96b-b47636ce3cf2.png width="600" />
 </div>
 
-- Install via card reader: Insert the M.2 NVMe SSD into an M.2 NVMe-to-USB 3.0 card reader and connect it to your computer. Use Rufus or balenaEtcher to write the Armbian system image to the NVMe drive, then install it in the device.
-- Install via microSD card: Write the Armbian system image to a microSD card and boot the device from it. Upload the `armbian.img` file to the microSD card, then use `dd` to write it to NVMe:
+- Install via card reader: Insert the M.2 NVMe SSD into an M.2 NVMe-to-USB 3.0 card reader and connect it to your computer. Use Rufus or balenaEtcher to write the CoreOS system image to the NVMe drive, then install it in the device.
+- Install via microSD card: Write the CoreOS system image to a microSD card and boot the device from it. Upload the `coreos.img` file to the microSD card, then use `dd` to write it to NVMe:
 
 ```Shell
-dd if=armbian.img  of=/dev/nvme0n1  bs=1M status=progress
+dd if=coreos.img  of=/dev/nvme0n1  bs=1M status=progress
 ```
 
 #### 8.2.2 Installation method for FastRhino R66S
 
-Use Rufus or balenaEtcher to write the Armbian system image to a microSD card, then insert it into the device.
+Use Rufus or balenaEtcher to write the CoreOS system image to a microSD card, then insert it into the device.
 
 #### 8.2.3 Installation method for FastRhino R68S
 
 - Download the [RKDevTool](https://github.com/ophub/kernel/releases/download/tools/FastRhino_r68s_RKDevTool_Release_v2.86___DriverAssitant_v5.1.1.tar.gz) tool and driver. Unzip, install the DriverAssistant driver, and open RKDevTool.
 - With R68s powered off, connect the USB male-to-male cable, press and hold the Recovery key, then plug in the 12V power supply. Release the Recovery key after two seconds — the flashing tool should `discover a LOADER device`.
 - Right-click in the blank area of the RKDevTool interface to add an item.
-- Set address to `0x00000000`, name to `armbian`, and path to the `armbian.img` system file.
-- Select the armbian entry, `deselect all other entries`, and click `execute` to write.
-- Note: If another system exists on eMMC, erase it first via Advanced Features before writing Armbian. If erasure fails, reflash the `MiniLoaderAll.bin` bootloader first, then enter `MASKROM` mode to write Armbian. MiniLoaderAll.bin settings: address `0xCCCCCCCC`, name `Loader`, path to the `MiniLoaderAll.bin` file in the Image directory of RKDevTool.
+- Set address to `0x00000000`, name to `coreos`, and path to the `coreos.img` system file.
+- Select the coreos entry, `deselect all other entries`, and click `execute` to write.
+- Note: If another system exists on eMMC, erase it first via Advanced Features before writing CoreOS. If erasure fails, reflash the `MiniLoaderAll.bin` bootloader first, then enter `MASKROM` mode to write CoreOS. MiniLoaderAll.bin settings: address `0xCCCCCCCC`, name `Loader`, path to the `MiniLoaderAll.bin` file in the Image directory of RKDevTool.
 
 <div style="width:100%;margin-top:40px;margin:5px;">
 <img src=https://user-images.githubusercontent.com/68696949/202970301-d798677b-e875-4971-ac8f-ee58b2a1e686.png width="200" /><br />
@@ -362,7 +362,7 @@ This method is based on [milton](https://www.cnblogs.com/milton/p/15391525.html)
 Open RKDevTool and right-click to add an item.
 
 - Address `0xCCCCCCCC`, name `Boot`, path [select](https://github.com/ophub/u-boot/tree/main/u-boot/rockchip/beikeyun) `rk3328_loader_v1.14.249.bin`.
-- Address `0x00000000`, name `system`, path select the `Armbian.img` system to be flashed.
+- Address `0x00000000`, name `system`, path select the `CoreOS.img` system to be flashed.
 - Check the "Force Write by Address" option, click "Execute," and wait for the progress to complete on the right-hand download panel.
 
 #### 8.2.5 Installation method for Chainedbox-L1-Pro
@@ -370,36 +370,36 @@ Open RKDevTool and right-click to add an item.
 This method is based on [cc747](https://post.smzdm.com/p/a4wkdo7l/)'s tutorial. Power off the Chainedbox-L1-Pro and unplug all cables. Connect a USB male-to-male cable between the USB 2.0 port on the Chainedbox-L1-Pro and your computer. Insert a paperclip into the Reset hole and hold it down, then plug in the power cord. Wait until `discovered a LOADER device` appears at the bottom of RKDevTool, then release the paperclip. Switch to `Advanced Features` and click `Enter Maskrom` until `Found a MASKROM device` appears. Right-click to add an item.
 
 - Address `0xCCCCCCCC`, name `Boot`, path [select](https://github.com/ophub/u-boot/tree/main/u-boot/rockchip/chainedbox) `rk3328_loader_v1.14.249.bin`.
-- Address `0x00000000`, name `system`, path select the `Armbian.img` system to be flashed.
+- Address `0x00000000`, name `system`, path select the `CoreOS.img` system to be flashed.
 - Check the "Force Write by Address" option, click "Execute," and wait for the progress to complete on the right-hand download panel.
 
 <div style="width:100%;margin-top:40px;margin:5px;">
-<img src=https://github.com/ophub/amlogic-s9xxx-armbian/assets/68696949/a6d2d8c0-35c5-44ba-be35-fd2e2758729b width="600" /><br />
-<img src=https://github.com/ophub/amlogic-s9xxx-armbian/assets/68696949/13aab016-1b93-4ff1-b1ef-c202bd357068 width="600" />
+<img src=https://github.com/leftymods/amlogic-s9xxx-armbian/assets/68696949/a6d2d8c0-35c5-44ba-be35-fd2e2758729b width="600" /><br />
+<img src=https://github.com/leftymods/amlogic-s9xxx-armbian/assets/68696949/13aab016-1b93-4ff1-b1ef-c202bd357068 width="600" />
 </div>
 
 #### 8.2.6 Installation method for lckfb-tspi
 - Download the [RKDevTool](https://github.com/ophub/kernel/releases/download/tools/FastRhino_r68s_RKDevTool_Release_v2.86___DriverAssitant_v5.1.1.tar.gz) tool and driver. Unzip, install the DriverAssistant driver, and open RKDevTool. (Note: use version 2.86 instead of 2.92, as version 2.92 crashes during flashing.)
 - With the tspi powered off, press and hold the Recovery key, then insert the Type-C data cable. Release the Recovery key after RKDevTool displays `A LOADER device was found`. Right-click to add an item.
-- Address `0x00000000`, name `system`, path select the `Armbian.img` system to be flashed.
+- Address `0x00000000`, name `system`, path select the `CoreOS.img` system to be flashed.
 - Click Execute and wait for the progress to complete.
 
 
 ### 8.3 Allwinner Series Installation Method
 
-Log in to the Armbian system (default user: root, default password: 1234) → Enter the command:
+Log in to the CoreOS system (default user: root, default password: 1234) → Enter the command:
 
 ```shell
-armbian-install
+coreos-install
 ```
 
-### 8.4 Installation Method for the Docker Version of Armbian
+### 8.4 Installation Method for the Docker Version of CoreOS
 
-You can use Docker versions of Armbian images on Ubuntu/Debian/Armbian systems. These images are hosted on [Docker Hub](https://hub.docker.com/r/ophub) and can be downloaded directly for use.
+You can use Docker versions of CoreOS images on Ubuntu/Debian/CoreOS systems. These images are hosted on [Docker Hub](https://hub.docker.com/r/ophub) and can be downloaded directly for use.
 
-Four Armbian Docker images with different base versions are provided: `armbian-trixie`, `armbian-bookworm`, `armbian-noble`, and `armbian-resolute`. Each version has both `arm64` and `amd64` builds, allowing you to choose the appropriate version based on your needs.
+Four CoreOS Docker images with different base versions are provided: `coreos-trixie`, `coreos-bookworm`, `coreos-noble`, and `coreos-resolute`. Each version has both `arm64` and `amd64` builds, allowing you to choose the appropriate version based on your needs.
 
-Among them, armbian-trixie is based on Debian 13, armbian-bookworm is based on Debian 12, armbian-noble is based on Ubuntu 24.04, and armbian-resolute is based on Ubuntu 26.04.
+Among them, coreos-trixie is based on Debian 13, coreos-bookworm is based on Debian 12, coreos-noble is based on Ubuntu 24.04, and coreos-resolute is based on Ubuntu 26.04.
 
 The arm64 version is suitable for devices with platform architectures such as Amlogic/Rockchip/Allwinner, while the amd64 version is suitable for computers and servers with x86_64 architecture.
 
@@ -426,38 +426,38 @@ docker network create -d macvlan \
     macvlan
 ```
 
-#### 8.4.3 Run Armbian Docker Container
+#### 8.4.3 Run CoreOS Docker Container
 
-Here, the `armbian-trixie:arm64` image is used as an example to demonstrate how to run an Armbian container.
+Here, the `coreos-trixie:arm64` image is used as an example to demonstrate how to run an CoreOS container.
 
 ```shell
-# Run the Armbian container in detached mode
+# Run the CoreOS container in detached mode
 # Modify the container name, IP address, image version, etc., according to your actual situation
-docker run -itd --name=armbian-trixie \
+docker run -itd --name=coreos-trixie \
     --privileged \
     --network macvlan \
     --ip 10.1.1.15 \
-    --hostname=armbian-trixie \
+    --hostname=coreos-trixie \
     -e TZ=Asia/Shanghai \
     --restart unless-stopped \
-    ophub/armbian-trixie:arm64
+    ophub/coreos-trixie:arm64
 
-# View Armbian container logs
-docker logs -f armbian-trixie
+# View CoreOS container logs
+docker logs -f coreos-trixie
 
-# Enter the Armbian container
-docker exec -it armbian-trixie bash
+# Enter the CoreOS container
+docker exec -it coreos-trixie bash
 
-# Exit the Armbian container
+# Exit the CoreOS container
 exit
 
-# Stop and remove the Armbian container
-docker rm -f armbian-trixie
+# Stop and remove the CoreOS container
+docker rm -f coreos-trixie
 ```
 
-## 9. Compiling Armbian Kernel
+## 9. Compiling CoreOS Kernel
 
-Kernel compilation is supported on Ubuntu, Debian, and Armbian systems, both locally and via GitHub Actions. For details, refer to the [Kernel Compilation Instructions](../../compile-kernel).
+Kernel compilation is supported on Ubuntu, Debian, and CoreOS systems, both locally and via GitHub Actions. For details, refer to the [Kernel Compilation Instructions](../../compile-kernel).
 
 ### 9.1 How to Add Custom Kernel Patches
 
@@ -480,7 +480,7 @@ When the kernel patch directory [tools/patch](../../compile-kernel/tools/patch) 
 
 ```yaml
 - name: Compile the kernel
-  uses: ophub/amlogic-s9xxx-armbian@main
+  uses: leftymods/amlogic-s9xxx-armbian@main
   with:
     build_target: kernel
     kernel_version: 5.15.1_6.1.1
@@ -493,10 +493,10 @@ When specifying a custom kernel patch via `kernel_patch`, follow the naming conv
 
 ### 9.2 How to Make Kernel Patches
 
-- Obtained from repositories such as [Armbian](https://github.com/armbian/build) and [OpenWrt](https://github.com/openwrt/openwrt): for example, [armbian/patch/kernel](https://github.com/armbian/build/tree/main/patch/kernel/archive) and [openwrt/rockchip/patches-6.1](https://github.com/openwrt/openwrt/tree/main/target/linux/rockchip/patches-6.1), [lede/rockchip/patches-5.15](https://github.com/coolsnowwolf/lede/tree/master/target/linux/rockchip/patches-5.15) etc. Patches from these mainline kernel repositories can generally be used directly.
+- Obtained from repositories such as [CoreOS](https://github.com/coreos/build) and [OpenWrt](https://github.com/openwrt/openwrt): for example, [coreos/patch/kernel](https://github.com/coreos/build/tree/main/patch/kernel/archive) and [openwrt/rockchip/patches-6.1](https://github.com/openwrt/openwrt/tree/main/target/linux/rockchip/patches-6.1), [lede/rockchip/patches-5.15](https://github.com/coolsnowwolf/lede/tree/master/target/linux/rockchip/patches-5.15) etc. Patches from these mainline kernel repositories can generally be used directly.
 - Obtained from GitHub commit URLs: Appending `.patch` to a commit URL generates the corresponding patch file.
 
-Before adding a custom kernel patch, compare it against the upstream kernel source repository [unifreq/linux-k.x.y](https://github.com/unifreq) to verify it has not already been applied and to avoid conflicts. Tested kernel patches are encouraged to be submitted to the kernel repositories maintained by unifreq. Your contributions help make Armbian and OpenWrt more stable and functional for everyone.
+Before adding a custom kernel patch, compare it against the upstream kernel source repository [unifreq/linux-k.x.y](https://github.com/unifreq) to verify it has not already been applied and to avoid conflicts. Tested kernel patches are encouraged to be submitted to the kernel repositories maintained by unifreq. Your contributions help make CoreOS and OpenWrt more stable and functional for everyone.
 
 
 ### 9.3 How to Customize Compilation of Driver Modules
@@ -507,8 +507,8 @@ Some drivers are not yet included in the mainline Linux kernel but can be compil
 # Step 1: Update to the latest kernel
 # Due to incomplete header files in earlier versions, it is necessary to update to the latest kernel version.
 # The requirement for each kernel version is not lower than 5.10.222, 5.15.163, 6.1.100, 6.6.41.
-armbian-sync
-armbian-update -k 6.1
+coreos-sync
+coreos-update -k 6.1
 
 
 # Step 2: Install compilation tools
@@ -519,7 +519,7 @@ wget https://github.com/ophub/kernel/releases/download/dev/arm-gnu-toolchain-14.
 # Extract
 tar -Jxf arm-gnu-toolchain-14.3.rel1-aarch64-aarch64-none-linux-gnu.tar.xz
 # Install additional compilation dependencies (optional; you can manually install missing components based on errors).
-armbian-kernel -u
+coreos-kernel -u
 
 
 # Step 3: Download and compile the driver
@@ -569,14 +569,14 @@ The illustration is as follows:
 <img width="700" alt="image" src="https://github.com/user-attachments/assets/d1bd2eff-4c57-4e91-a870-08b0f8b1fe16">
 </div>
 
-## 10. Updating Armbian Kernel
+## 10. Updating CoreOS Kernel
 
-Log in to the Armbian system → Enter the command:
+Log in to the CoreOS system → Enter the command:
 
 ```shell
 # Run as root user (sudo -i)
 # If no parameter is specified, it will be updated to the latest version.
-armbian-update
+coreos-update
 ```
 
 | Optional Parameters | Default Value | Options | Description |
@@ -590,34 +590,34 @@ armbian-update
 | -s | None | None/DiskName | [SOS] Restore the system kernel in eMMC/NVMe/sdX and other disks |
 | -h | None | None | View the usage help |
 
-Example: `armbian-update -k 5.15 -u stable -d deb`
+Example: `coreos-update -k 5.15 -u stable -d deb`
 
-The `-k` parameter accepts either an exact version number (e.g., `armbian-update -k 5.15.50`) or a version series (e.g., `armbian-update -k 5.15`), which automatically selects the latest version in that series.
+The `-k` parameter accepts either an exact version number (e.g., `coreos-update -k 5.15.50`) or a version series (e.g., `coreos-update -k 5.15`), which automatically selects the latest version in that series.
 
 During kernel updates, the current kernel is automatically backed up to `/ddbr/backup`, retaining the three most recent versions. If a newly installed kernel is unstable, restore a backed-up kernel at any time:
 ```shell
 # Enter the backup kernel directory, such as 6.6.12
 cd /ddbr/backup/6.6.12
 # Execute the kernel update command, which will automatically install the kernel in the current directory
-armbian-update
+coreos-update
 ```
 
-[SOS]: If an incomplete update or other issue prevents the system from booting from eMMC/NVMe/sdX, boot Armbian from another disk (e.g., USB) with any kernel version, then run `armbian-update -s` to restore the kernel to eMMC/NVMe/sdX. Without a disk parameter, the kernel is restored from the USB device to eMMC/NVMe/sdX by default. For systems with multiple disks, specify the target disk name explicitly. Examples:
+[SOS]: If an incomplete update or other issue prevents the system from booting from eMMC/NVMe/sdX, boot CoreOS from another disk (e.g., USB) with any kernel version, then run `coreos-update -s` to restore the kernel to eMMC/NVMe/sdX. Without a disk parameter, the kernel is restored from the USB device to eMMC/NVMe/sdX by default. For systems with multiple disks, specify the target disk name explicitly. Examples:
 
 ```shell
 # Restore the kernel in eMMC
-armbian-update -s mmcblk1
+coreos-update -s mmcblk1
 # Restore the kernel in NVMe
-armbian-update -s nvme0n1
+coreos-update -s nvme0n1
 # Restore the kernel in a removable storage device
-armbian-update -s sda
+coreos-update -s sda
 # Disk names can be abbreviated as mmcblk1/nvme0n1/sda, etc., or use the complete name such as /dev/sda
-armbian-update -s /dev/sda
+coreos-update -s /dev/sda
 # When the device has only one built-in storage (eMMC/NVMe/sdX), the disk name parameter can be omitted
-armbian-update -s
+coreos-update -s
 ```
 
-If network issues prevent downloading from github.com, manually download the kernel files, upload them to any directory on your Armbian system, navigate to that directory, and run `armbian-update` for local installation. The system automatically prioritizes local kernel files when a complete set is detected in the current directory. The kernel is available in `tar` and `deb` formats. Each requires 4 files:
+If network issues prevent downloading from github.com, manually download the kernel files, upload them to any directory on your CoreOS system, navigate to that directory, and run `coreos-update` for local installation. The system automatically prioritizes local kernel files when a complete set is detected in the current directory. The kernel is available in `tar` and `deb` formats. Each requires 4 files:
 
 - The 4 required files for `tar` format updates are: `header-xxx.tar.gz`, `boot-xxx.tar.gz`, `dtb-xxx.tar.gz`, and `modules-xxx.tar.gz`.
 - The 4 required files for `deb` format updates are: `linux-image-xxx.deb`, `linux-dtb-xxx.deb`, `linux-headers-xxx.deb`, and `linux-libc-dev-xxx.deb`.
@@ -635,21 +635,21 @@ Custom options set via `-r`/`-u`/`-b`/`-d` can be saved permanently in `/etc/oph
 
 ## 11. Installing Common Software
 
-Log in to the Armbian system → Enter the command:
+Log in to the CoreOS system → Enter the command:
 
 ```shell
-armbian-software
+coreos-software
 ```
 
-Use `armbian-software -u` to update the local software center list. Based on community feedback in [Issue](https://github.com/ophub/amlogic-s9xxx-armbian/issues), commonly used [software](../build-armbian/armbian-files/common-files/usr/share/ophub/armbian-software/software-list.conf) is gradually integrated with one-click installation, update, and uninstallation support. This includes `docker images`, `desktop software`, `application services`, etc. See more [instructions](armbian_software.md).
+Use `coreos-software -u` to update the local software center list. Based on community feedback in [Issue](https://github.com/leftymods/amlogic-s9xxx-armbian/issues), commonly used [software](../build-coreos/coreos-files/common-files/usr/share/ophub/coreos-software/software-list.conf) is gradually integrated with one-click installation, update, and uninstallation support. This includes `docker images`, `desktop software`, `application services`, etc. See more [instructions](coreos_software.md).
 
-Use `armbian-apt` to select an appropriate software mirror for your region, improving download speeds. For example, select the `mirrors.tuna.tsinghua.edu.cn` source in China:
+Use `coreos-apt` to select an appropriate software mirror for your region, improving download speeds. For example, select the `mirrors.tuna.tsinghua.edu.cn` source in China:
 
 
 ```shell
-armbian-apt
+coreos-apt
 
-[ STEPS ] Welcome to the Armbian source change script.
+[ STEPS ] Welcome to the CoreOS source change script.
 [ INFO ] Please select a [ bookworm ] mirror site.
   ┌──────┬───────────────────┬────────────────────────────────┐
   │  ID  │  Country/Region   │  Mirror Site                   │
@@ -688,11 +688,11 @@ armbian-apt
 
 ## 12. Frequently Asked Questions
 
-This section covers common issues encountered when using Armbian.
+This section covers common issues encountered when using CoreOS.
 
 ### 12.1 dtb and u-boot Correspondence Table for Each Box
 
-The supported TV box list is located in the [/etc/model_database.conf](../build-armbian/armbian-files/common-files/etc/model_database.conf) configuration file in the `Armbian` system.
+The supported TV box list is located in the [/etc/model_database.conf](../build-coreos/coreos-files/common-files/etc/model_database.conf) configuration file in the `CoreOS` system.
 
 ### 12.2 Instructions for LED Screen Display Control
 
@@ -700,20 +700,20 @@ Please refer to the [instructions](led_screen_display_control.md).
 
 ### 12.3 How to Restore the Original Android TV System
 
-Back up and restore the Android TV system using `armbian-ddbr`.
+Back up and restore the Android TV system using `coreos-ddbr`.
 
 Alternatively, flash the Android system to eMMC via USB cable. Android system images are available in [Tools](https://github.com/ophub/kernel/releases/tag/tools).
 
-#### 12.3.1 Backup and Restore Using Armbian-ddbr
+#### 12.3.1 Backup and Restore Using CoreOS-ddbr
 
-Before installing Armbian on a new device, back up the original Android TV system in case restoration is needed later. Boot Armbian from `TF/SD/USB`, run `armbian-ddbr`, and enter `b` when prompted to create a backup. The backup is saved to `/ddbr/BACKUP-arm-64-emmc.img.gz` — download and keep it in a safe location. To restore, upload the backup file to the same path on the `TF/SD/USB` device, run `armbian-ddbr`, and enter `r` when prompted.
+Before installing CoreOS on a new device, back up the original Android TV system in case restoration is needed later. Boot CoreOS from `TF/SD/USB`, run `coreos-ddbr`, and enter `b` when prompted to create a backup. The backup is saved to `/ddbr/BACKUP-arm-64-emmc.img.gz` — download and keep it in a safe location. To restore, upload the backup file to the same path on the `TF/SD/USB` device, run `coreos-ddbr`, and enter `r` when prompted.
 
 
 #### 12.3.2 Recovering using Amlogic Flashing Tool
 
 - If the device can still boot from USB after reinserting the power supply, simply reinstall. Retry multiple times if necessary.
 
-- If the screen remains black and the device cannot boot from USB, a short-circuit recovery is required. First restore the original Android system, then reinstall Armbian. Download and install the [amlogic_usb_burning_tool](https://github.com/ophub/kernel/releases/tag/tools) recovery tool. Prepare a [USB male-to-male cable](https://user-images.githubusercontent.com/68696949/159267576-74ad69a5-b6fc-489d-b1a6-0f8f8ff28634.png) and a [paperclip](https://user-images.githubusercontent.com/68696949/159267790-38cf4681-6827-4cb6-86b2-19c7f1943342.png).
+- If the screen remains black and the device cannot boot from USB, a short-circuit recovery is required. First restore the original Android system, then reinstall CoreOS. Download and install the [amlogic_usb_burning_tool](https://github.com/ophub/kernel/releases/tag/tools) recovery tool. Prepare a [USB male-to-male cable](https://user-images.githubusercontent.com/68696949/159267576-74ad69a5-b6fc-489d-b1a6-0f8f8ff28634.png) and a [paperclip](https://user-images.githubusercontent.com/68696949/159267790-38cf4681-6827-4cb6-86b2-19c7f1943342.png).
 
 - Using x96max+ as an example, locate the [short-circuit point](https://user-images.githubusercontent.com/68696949/110590933-67785300-81b3-11eb-9860-986ef35dca7d.jpg) on the motherboard and download the [Android TV system package](https://github.com/ophub/kernel/releases/tag/tools). Android TV system images and short-circuit point diagrams for other common devices are also [available here](https://github.com/ophub/kernel/releases/tag/tools).
 
@@ -734,13 +734,13 @@ Operating method:
    If the progress bar does not move, you can try plugging in the power supply. Normally, you don't need power support for flashing, only the power supply from the USB double male can meet the requirements.
 ```
 
-Once factory settings are restored, follow the same steps as the initial Armbian installation.
+Once factory settings are restored, follow the same steps as the initial CoreOS installation.
 
 ### 12.4 Setting the box to boot from USB/TF/SD
 
 Depending on your situation, use either the initial installation or reinstallation method.
 
-#### 12.4.1 Initial Installation of Armbian System
+#### 12.4.1 Initial Installation of CoreOS System
 
 - Insert the USB/TF/SD with the installed system into the box.
 - Enable developer mode: Settings → About device → Version number (e.g., X96max plus...), tap the version number 5 times rapidly until `You are now a developer` appears.
@@ -749,9 +749,9 @@ Depending on your situation, use either the initial installation or reinstallati
 - Open a command prompt and run `adb connect 192.168.1.137` (replace with your device's IP, found in your router's admin panel). A successful connection displays `connected to 192.168.1.137:5555`.
 - Run `adb shell reboot update` — the device will reboot from the inserted USB/TF/SD. Access the system via its IP address in a browser or through SSH.
 
-#### 12.4.2 Reinstallation of Armbian System
+#### 12.4.2 Reinstallation of CoreOS System
 
-- In normal situations, simply insert the USB drive with Armbian and boot from it. USB takes boot priority over eMMC.
+- In normal situations, simply insert the USB drive with CoreOS and boot from it. USB takes boot priority over eMMC.
 - If the device does not boot from USB, rename the `boot.scr` file in the eMMC's `/boot` directory (e.g., to `boot.scr.bak`), then insert the USB drive and boot again.
 
 ### 12.5 Disable Infrared Receiver
@@ -766,7 +766,7 @@ to `/etc/modprobe.d/blacklist.conf` and restart.
 
 ### 12.6 Boot file selection
 
-- Among known devices, only `T95(s905x)` / `T95Z-Plus(s912)` / `BesTV-R3300L(s905l-b)` and a few others require the `/bootfs/extlinux/extlinux.conf` file, which is included by default in the system. If other devices require it, write the system to USB, open the `boot` partition, and rename `/boot/extlinux/extlinux.conf.bak` by removing the `.bak` extension. When installing to eMMC, `armbian-install` automatically detects and creates the `extlinux.conf` file if needed.
+- Among known devices, only `T95(s905x)` / `T95Z-Plus(s912)` / `BesTV-R3300L(s905l-b)` and a few others require the `/bootfs/extlinux/extlinux.conf` file, which is included by default in the system. If other devices require it, write the system to USB, open the `boot` partition, and rename `/boot/extlinux/extlinux.conf.bak` by removing the `.bak` extension. When installing to eMMC, `coreos-install` automatically detects and creates the `extlinux.conf` file if needed.
 
 - All other devices boot using `/boot/uEnv.txt` only — do not modify the `extlinux.conf.bak` file.
 
@@ -1155,7 +1155,7 @@ Some devices support Bluetooth. Enable it as follows:
 
 ```shell
 # Install Bluetooth support
-armbian-config >> Network >> BT: Install Bluetooth support
+coreos-config >> Network >> BT: Install Bluetooth support
 
 # Reboot the system
 reboot
@@ -1177,7 +1177,7 @@ dmesg | grep Bluetooth
 
 ```shell
 # Connect Bluetooth device
-armbian-config >> Network >> BT: Discover and connect Bluetooth devices
+coreos-config >> Network >> BT: Discover and connect Bluetooth devices
 ```
 
 Bluetooth can also be managed via terminal commands:
@@ -1220,25 +1220,25 @@ bluetoothctl block 12:34:56:78:90:AB
 
 ### 12.8 How to Add Startup Tasks
 
-A startup task script is included in the system. In Armbian, the path is [/etc/custom_service/start_service.sh](../build-armbian/armbian-files/common-files/etc/custom_service/start_service.sh). Add your custom startup tasks to this script as needed.
+A startup task script is included in the system. In CoreOS, the path is [/etc/custom_service/start_service.sh](../build-coreos/coreos-files/common-files/etc/custom_service/start_service.sh). Add your custom startup tasks to this script as needed.
 
 ### 12.9 How to Update Service Scripts in the System
 
-Run `armbian-sync` to update all local service scripts to the latest version.
+Run `coreos-sync` to update all local service scripts to the latest version.
 
-If `armbian-sync` fails, the installed version may be outdated. Update it manually:
+If `coreos-sync` fails, the installed version may be outdated. Update it manually:
 
 ```shell
-wget https://raw.githubusercontent.com/ophub/amlogic-s9xxx-armbian/main/build-armbian/armbian-files/common-files/usr/sbin/armbian-sync -O /usr/sbin/armbian-sync
+wget https://raw.githubusercontent.com/leftymods/amlogic-s9xxx-armbian/main/build-coreos/coreos-files/common-files/usr/sbin/coreos-sync -O /usr/sbin/coreos-sync
 
-chmod +x /usr/sbin/armbian-sync
+chmod +x /usr/sbin/coreos-sync
 
-armbian-sync
+coreos-sync
 ```
 
 ### 12.10 How to Get Android System Partition Information on eMMC
 
-Before writing Armbian to eMMC, confirm the device's Android partition table to ensure data is written to safe areas. Damaging the partition table may prevent the system from booting. Writing to unsafe areas can cause boot failures or errors like the one shown below:
+Before writing CoreOS to eMMC, confirm the device's Android partition table to ensure data is written to safe areas. Damaging the partition table may prevent the system from booting. Writing to unsafe areas can cause boot failures or errors like the one shown below:
 
 <div style="width:100%;margin-top:40px;margin:5px;">
 <img width="800" alt="image" src="https://user-images.githubusercontent.com/68696949/187075834-4ac40263-52ae-4538-a4b1-d6f0d5b9c856.png">
@@ -1246,7 +1246,7 @@ Before writing Armbian to eMMC, confirm the device's Android partition table to 
 
 #### 12.10.1 Obtaining Partition Information
 
-For Armbian versions released from this repository after November 2022, run the following command to generate a URL containing complete partition information (no internet connection required on the device):
+For CoreOS versions released from this repository after November 2022, run the following command to generate a URL containing complete partition information (no internet connection required on the device):
 
 ```shell
 ampart /dev/mmcblk2 --mode webreport 2>/dev/null
@@ -1304,7 +1304,7 @@ If the Android boot logo is needed, the 852M + 32M (`852M~884M`) `logo` partitio
 
 #### 12.10.4 For eMMC Installation
 
-If your device fails when using `armbian-install` and the `-a` parameter (use [ampart](https://github.com/7Ji/ampart) to adjust the eMMC partition layout) is `yes` (default value), then your box cannot use the optimal layout (that is, adjust the DTB partition information to only have `data`, then generate eMMC partition information from this, and then move all remaining partitions forward. In this way, the space from 117M onwards can be used). You need to modify the corresponding partition information in [armbian-install](../build-armbian/armbian-files/common-files/usr/sbin/armbian-install).
+If your device fails when using `coreos-install` and the `-a` parameter (use [ampart](https://github.com/7Ji/ampart) to adjust the eMMC partition layout) is `yes` (default value), then your box cannot use the optimal layout (that is, adjust the DTB partition information to only have `data`, then generate eMMC partition information from this, and then move all remaining partitions forward. In this way, the space from 117M onwards can be used). You need to modify the corresponding partition information in [coreos-install](../build-coreos/coreos-files/common-files/usr/sbin/coreos-install).
 
 In this file, the key parameters for declaring the partition layout are three: `BLANK1`, `BOOT`, `BLANK2`. Among them, `BLANK1` represents the unusable size starting from the beginning of eMMC; `BOOT` represents the size of the partition created after `BLANK1` for storing the kernel, DTB, etc., preferably not less than 256M, `BLANK2` represents the unusable size after `BOOT`. The space after this will be used to create the `ROOT` partition to store all the data outside the `/boot` mount point in the system. All three should be integers, and the unit is MiB (1 MiB = 1024 KiB = 1024^2 Byte)
 
@@ -1380,7 +1380,7 @@ Within the amlogic-boot-fip source code, the only file that varies by device mod
 
 For build instructions, see the device-specific documentation at https://github.com/unifreq/u-boot/tree/master/doc/board/amlogic.
 
-Building u-boot using [unifreq](https://github.com/unifreq)'s method requires the device's acs.bin, dts, and config files. The dts exported from the Android system cannot be directly converted to Armbian format, so a corresponding dts file must be written manually. Based on your device's specific hardware differences (switches, LEDs, power control, TF card, SDIO wifi module, etc.), modify and create a [dts](https://github.com/unifreq/linux-5.15.y/tree/main/arch/arm64/boot/dts/amlogic) file from similar ones in the kernel source repository.
+Building u-boot using [unifreq](https://github.com/unifreq)'s method requires the device's acs.bin, dts, and config files. The dts exported from the Android system cannot be directly converted to CoreOS format, so a corresponding dts file must be written manually. Based on your device's specific hardware differences (switches, LEDs, power control, TF card, SDIO wifi module, etc.), modify and create a [dts](https://github.com/unifreq/linux-5.15.y/tree/main/arch/arm64/boot/dts/amlogic) file from similar ones in the kernel source repository.
 
 For example, building u-boot for X96Max Plus:
 
@@ -1470,9 +1470,9 @@ By adding more options in `board_configs.sh` and `mk-uboot.sh` within the [radxa
 
 cm9vdA provides scripts and instructions for compiling u-boot and the kernel in his open-source project [cm9vdA/build-linux](https://github.com/cm9vdA/build-linux). The following are documented compilation processes for various Rockchip devices:
 
-- Build u-boot for Lenovo-Leez-P710 (rk3399) device: [Link](https://github.com/ophub/amlogic-s9xxx-armbian/issues/1609#issuecomment-1681494735)
-- Build u-boot for DLFR100 (rk3399) device: [Link](https://github.com/ophub/amlogic-s9xxx-armbian/issues/1522#issuecomment-1622919423)
-- Build u-boot for ZYSJ (rk3399) device: [Link](https://github.com/ophub/amlogic-s9xxx-armbian/issues/1380#issuecomment-1539325464)
+- Build u-boot for Lenovo-Leez-P710 (rk3399) device: [Link](https://github.com/leftymods/amlogic-s9xxx-armbian/issues/1609#issuecomment-1681494735)
+- Build u-boot for DLFR100 (rk3399) device: [Link](https://github.com/leftymods/amlogic-s9xxx-armbian/issues/1522#issuecomment-1622919423)
+- Build u-boot for ZYSJ (rk3399) device: [Link](https://github.com/leftymods/amlogic-s9xxx-armbian/issues/1380#issuecomment-1539325464)
 
 
 ### 12.12 Error in Memory Size Recognition
@@ -1501,12 +1501,12 @@ sync && reboot
 
 # 4. [Optional action] Perform testing based on requirements
 # e.g., reinstall for testing when addressing the issue mentioned in 12.16
-armbian-install
+coreos-install
 ```
 
 ### 12.14 How to Modify cmdline Settings
 
-In Amlogic devices, add/modify/delete settings in `/boot/uEnv.txt`. In Rockchip and Allwinner devices, configure in `/boot/armbianEnv.txt` (via the `extraargs` or `extraboardargs` parameters). Devices using `/boot/extlinux/extlinux.conf` configure in that file. A reboot is required after each change.
+In Amlogic devices, add/modify/delete settings in `/boot/uEnv.txt`. In Rockchip and Allwinner devices, configure in `/boot/coreosEnv.txt` (via the `extraargs` or `extraboardargs` parameters). Devices using `/boot/extlinux/extlinux.conf` configure in that file. A reboot is required after each change.
 
 - For instance, `Home Assistant Supervisor` only supports `docker cgroup v1`, while the default Docker installation uses v2. To switch to v1, add `systemd.unified_cgroup_hierarchy=0` to cmdline and reboot.
 
@@ -1527,40 +1527,40 @@ In Amlogic devices, add/modify/delete settings in `/boot/uEnv.txt`. In Rockchip 
 </div>
 
 <div style="width:100%;margin-top:40px;margin:5px;">
-<img width="700" alt="image" src="https://github.com/ophub/amlogic-s9xxx-armbian/assets/68696949/a600dcad-d817-47eb-b529-4014019915b3">
+<img width="700" alt="image" src="https://github.com/leftymods/amlogic-s9xxx-armbian/assets/68696949/a600dcad-d817-47eb-b529-4014019915b3">
 </div>
 
 ### 12.15 How to Add New Supported Devices
 
-Building an Armbian system for a device requires a `device configuration file`, `system files`, `u-boot files`, and `process control files`. The methods for adding each are described below:
+Building an CoreOS system for a device requires a `device configuration file`, `system files`, `u-boot files`, and `process control files`. The methods for adding each are described below:
 
 #### 12.15.1 Add Device Configuration File
 
-In the configuration file [/etc/model_database.conf](../build-armbian/armbian-files/common-files/etc/model_database.conf), add device configuration based on its test support status. Devices with `BUILD` set to `yes` are built by default; the corresponding `BOARD` value `must be unique`. These devices can use the default Armbian system directly.
+In the configuration file [/etc/model_database.conf](../build-coreos/coreos-files/common-files/etc/model_database.conf), add device configuration based on its test support status. Devices with `BUILD` set to `yes` are built by default; the corresponding `BOARD` value `must be unique`. These devices can use the default CoreOS system directly.
 
-Devices set to `no` are not packaged by default. To use them, download the Armbian system with the same `FAMILY`, write it to `USB`, open the USB boot partition on your computer, and modify the `FDT dtb name` in `/boot/uEnv.txt` to match your device.
+Devices set to `no` are not packaged by default. To use them, download the CoreOS system with the same `FAMILY`, write it to `USB`, open the USB boot partition on your computer, and modify the `FDT dtb name` in `/boot/uEnv.txt` to match your device.
 
 #### 12.15.2 Add System Files
 
-Common files are placed in `build-armbian/armbian-files/common-files`, shared across all platforms.
+Common files are placed in `build-coreos/coreos-files/common-files`, shared across all platforms.
 
-Platform-specific files are placed in `build-armbian/armbian-files/platform-files/<platform>`: [Amlogic](../build-armbian/armbian-files/platform-files/amlogic), [Rockchip](../build-armbian/armbian-files/platform-files/rockchip), and [Allwinner](../build-armbian/armbian-files/platform-files/allwinner). The `bootfs` directory contains /boot partition files, and the `rootfs` directory contains Armbian system files.
+Platform-specific files are placed in `build-coreos/coreos-files/platform-files/<platform>`: [Amlogic](../build-coreos/coreos-files/platform-files/amlogic), [Rockchip](../build-coreos/coreos-files/platform-files/rockchip), and [Allwinner](../build-coreos/coreos-files/platform-files/allwinner). The `bootfs` directory contains /boot partition files, and the `rootfs` directory contains CoreOS system files.
 
-For devices with special configuration requirements, add an independent directory named after the `BOARD` in `build-armbian/armbian-files/different-files`. Create `bootfs` and `rootfs` subdirectories as needed to add files under the system's `/boot` partition or other system paths. All folder names correspond to actual paths in the Armbian system. These files can add new files or override files from common and platform directories.
+For devices with special configuration requirements, add an independent directory named after the `BOARD` in `build-coreos/coreos-files/different-files`. Create `bootfs` and `rootfs` subdirectories as needed to add files under the system's `/boot` partition or other system paths. All folder names correspond to actual paths in the CoreOS system. These files can add new files or override files from common and platform directories.
 
 #### 12.15.3 Add u-boot Files
 
-`Amlogic` series devices, share [bootloader](https://github.com/ophub/u-boot/tree/main/u-boot/amlogic/bootloader) files and [u-boot](https://github.com/ophub/u-boot/tree/main/u-boot/amlogic/overload) files. If there are new files, put them in the corresponding directory. The `bootloader` files will automatically be added to the Armbian system's `/usr/lib/u-boot` directory during system construction, and `u-boot` files will be automatically added to the `/boot` directory.
+`Amlogic` series devices, share [bootloader](https://github.com/ophub/u-boot/tree/main/u-boot/amlogic/bootloader) files and [u-boot](https://github.com/ophub/u-boot/tree/main/u-boot/amlogic/overload) files. If there are new files, put them in the corresponding directory. The `bootloader` files will automatically be added to the CoreOS system's `/usr/lib/u-boot` directory during system construction, and `u-boot` files will be automatically added to the `/boot` directory.
 
 `Rockchip` and `Allwinner` series devices, add an independent [u-boot](https://github.com/ophub/u-boot/tree/main/u-boot) file directory named after `BOARD` for each device, and the corresponding series files are placed in this directory.
 
-During the Armbian image construction, these u-boot files will be written into the corresponding Armbian image files by the rebuild script according to the configuration in [/etc/model_database.conf](../build-armbian/armbian-files/common-files/etc/model_database.conf).
+During the CoreOS image construction, these u-boot files will be written into the corresponding CoreOS image files by the rebuild script according to the configuration in [/etc/model_database.conf](../build-coreos/coreos-files/common-files/etc/model_database.conf).
 
-For devices that can use standard U-Boot files, using them directly is strongly recommended. However, some devices may lack a suitable U-Boot. If such a device can already run other Linux systems like Ubuntu, you can try preserving key boot-related partitions to install Armbian or OpenWrt. The critical partitions that typically need preservation include `bootloader`, `reserved`, and `env`.
+For devices that can use standard U-Boot files, using them directly is strongly recommended. However, some devices may lack a suitable U-Boot. If such a device can already run other Linux systems like Ubuntu, you can try preserving key boot-related partitions to install CoreOS or OpenWrt. The critical partitions that typically need preservation include `bootloader`, `reserved`, and `env`.
 
-These partitions can be backed up and written back to their corresponding locations when creating a new Armbian or OpenWrt image. The resulting image, containing the original system's boot partitions, can be written to eMMC directly via the `dd` command or through the built-in installation tools (e.g., Armbian's `armbian-install` or OpenWrt's `Amlogic Service` plugin).
+These partitions can be backed up and written back to their corresponding locations when creating a new CoreOS or OpenWrt image. The resulting image, containing the original system's boot partitions, can be written to eMMC directly via the `dd` command or through the built-in installation tools (e.g., CoreOS's `coreos-install` or OpenWrt's `Amlogic Service` plugin).
 
-Currently, devices using this method include [oes(a311d)](https://github.com/ophub/amlogic-s9xxx-armbian/issues/2666), [oes-plus(s922x)](https://github.com/ophub/amlogic-s9xxx-armbian/issues/3029), and [oec-turbo(rk3566)](https://github.com/ophub/amlogic-s9xxx-armbian/pull/2736). The following uses the `oes(a311d)` device as an example to detail the procedure.
+Currently, devices using this method include [oes(a311d)](https://github.com/leftymods/amlogic-s9xxx-armbian/issues/2666), [oes-plus(s922x)](https://github.com/leftymods/amlogic-s9xxx-armbian/issues/3029), and [oec-turbo(rk3566)](https://github.com/leftymods/amlogic-s9xxx-armbian/pull/2736). The following uses the `oes(a311d)` device as an example to detail the procedure.
 
 ##### 12.15.3.1 Check the Partition Layout
 
@@ -1620,15 +1620,15 @@ Analyzing the output, the address of the last line containing non-zero data is `
 
 ##### 12.15.3.3 Add a Special Partition Writing File
 
-For implementation details, refer to the `write_board_bootloader` function in [/etc/armbian-board-release.conf](https://github.com/ophub/amlogic-s9xxx-armbian/blob/main/build-armbian/armbian-files/different-files/a311d-oes/rootfs/etc/armbian-board-release.conf). This function is called during the image rebuild process. This configuration file also serves as a powerful device customization hub — it allows precise control over image partition layout and size via parameters like `skip_mb="700"`, and supports custom scripts for kernel or system file operations. All advanced, device-specific customizations are centrally managed in this file.
+For implementation details, refer to the `write_board_bootloader` function in [/etc/coreos-board-release.conf](https://github.com/leftymods/amlogic-s9xxx-armbian/blob/main/build-coreos/coreos-files/different-files/a311d-oes/rootfs/etc/coreos-board-release.conf). This function is called during the image rebuild process. This configuration file also serves as a powerful device customization hub — it allows precise control over image partition layout and size via parameters like `skip_mb="700"`, and supports custom scripts for kernel or system file operations. All advanced, device-specific customizations are centrally managed in this file.
 
 #### 12.15.4 Add Process Control Files
 
-Add the corresponding `BOARD` option to `armbian_board` in the [yml workflow control file](../.github/workflows/build-armbian-arm64-server-image.yml), which supports use in `Actions` on github.com.
+Add the corresponding `BOARD` option to `coreos_board` in the [yml workflow control file](../.github/workflows/build-coreos-arm64-server-image.yml), which supports use in `Actions` on github.com.
 
 ### 12.16 How to Resolve the Issue of I/O Errors While Writing to eMMC
 
-Some devices can boot Armbian normally from USB/SD/TF but report I/O write errors when writing to eMMC, such as the case in [Issues](https://github.com/ophub/amlogic-s9xxx-armbian/issues/989):
+Some devices can boot CoreOS normally from USB/SD/TF but report I/O write errors when writing to eMMC, such as the case in [Issues](https://github.com/leftymods/amlogic-s9xxx-armbian/issues/989):
 
 ```shell
 [  284.338449] I/O error, dev mmcblk2, sector 0 op 0x1:(WRITE) flags 0x800 phys_seg 1 prio class 2
@@ -1676,20 +1676,20 @@ Take the code snippet in the [dts](https://github.com/unifreq/linux-5.15.y/tree/
 };
 ```
 
-Generally, reducing the frequency of `&sd_emmc_c` from `max-frequency = <200000000>;` to `max-frequency = <100000000>;` resolves the issue. If not, try `50000000`. Adjust `&sd_emmc_b` for `USB/SD/TF` settings, and use `sd-uhs-sdr` to limit speed. Modify the dts file and [compile](https://github.com/ophub/amlogic-s9xxx-armbian/tree/main/compile-kernel) to get a test file, or use the decompilation method in `Section 12.13` to modify an existing dtb file. When modifying decompiled dtb files, use hexadecimal values: decimal `200000000` = hex `0xbebc200`, `100000000` = `0x5f5e100`, `50000000` = `0x2faf080`, `25000000` = `0x17d7840`. Alternatively, refer to the cmdline configuration method in `Section 12.14` and add the `mmc_core.max_freq=50000000` parameter to the cmdline to limit the maximum frequency of the eMMC, thereby resolving read/write errors and instability issues.
+Generally, reducing the frequency of `&sd_emmc_c` from `max-frequency = <200000000>;` to `max-frequency = <100000000>;` resolves the issue. If not, try `50000000`. Adjust `&sd_emmc_b` for `USB/SD/TF` settings, and use `sd-uhs-sdr` to limit speed. Modify the dts file and [compile](https://github.com/leftymods/amlogic-s9xxx-armbian/tree/main/compile-kernel) to get a test file, or use the decompilation method in `Section 12.13` to modify an existing dtb file. When modifying decompiled dtb files, use hexadecimal values: decimal `200000000` = hex `0xbebc200`, `100000000` = `0x5f5e100`, `50000000` = `0x2faf080`, `25000000` = `0x17d7840`. Alternatively, refer to the cmdline configuration method in `Section 12.14` and add the `mmc_core.max_freq=50000000` parameter to the cmdline to limit the maximum frequency of the eMMC, thereby resolving read/write errors and instability issues.
 
-In addition to software-layer solutions, this issue can also be resolved through [hardware upgrades](https://github.com/ophub/amlogic-s9xxx-armbian/issues/998) or [physical modifications](https://www.right.com.cn/forum/thread-901586-1-1.html).
+In addition to software-layer solutions, this issue can also be resolved through [hardware upgrades](https://github.com/leftymods/amlogic-s9xxx-armbian/issues/998) or [physical modifications](https://www.right.com.cn/forum/thread-901586-1-1.html).
 
 ### 12.17 How to Solve the Issue of No Sound in the Bullseye Version
 
 Error log information for the sound issue:
 
 ```shell
-Mar 29 15:47:18 armbian-ct2000 kernel:  fe.dai-link-0: ASoC: dpcm_fe_dai_prepare() failed (-22)
-Mar 29 15:47:18 armbian-ct2000 kernel:  fe.dai-link-0: ASoC: no backend DAIs enabled for fe.dai-link-0
+Mar 29 15:47:18 coreos-ct2000 kernel:  fe.dai-link-0: ASoC: dpcm_fe_dai_prepare() failed (-22)
+Mar 29 15:47:18 coreos-ct2000 kernel:  fe.dai-link-0: ASoC: no backend DAIs enabled for fe.dai-link-0
 ```
 
-Please refer to the method in [Bullseye NO Sound](https://github.com/ophub/amlogic-s9xxx-armbian/issues/1000) for settings.
+Please refer to the method in [Bullseye NO Sound](https://github.com/leftymods/amlogic-s9xxx-armbian/issues/1000) for settings.
 
 ```shell
 curl -fsSOL https://github.com/ophub/kernel/releases/download/tools/bullseye_g12_sound-khadas-utils-4-2-any.tar.gz
@@ -1699,11 +1699,11 @@ systemctl enable sound.service
 systemctl restart sound.service
 ```
 
-Restart Armbian for testing. If the sound still doesn't work, your device may be using an older audio output configuration. Comment out the new configuration at `L137-L142` in /usr/bin/g12_sound.sh (primarily for G12B / S922X; the older G12A/S905X2 and most SM1/S905X3 based on G12A cannot use it), and uncomment the old configuration at `L130-L134`.
+Restart CoreOS for testing. If the sound still doesn't work, your device may be using an older audio output configuration. Comment out the new configuration at `L137-L142` in /usr/bin/g12_sound.sh (primarily for G12B / S922X; the older G12A/S905X2 and most SM1/S905X3 based on G12A cannot use it), and uncomment the old configuration at `L130-L134`.
 
 ### 12.18 How to build the boot.scr file
 
-In the Armbian system, the `boot.scr` file in `/boot` is the compiled boot script. `boot.scr` is generated from the `boot.cmd` source file. Modify `boot.cmd` to make changes, then compile it into `boot.scr` using the mkimage command.
+In the CoreOS system, the `boot.scr` file in `/boot` is the compiled boot script. `boot.scr` is generated from the `boot.cmd` source file. Modify `boot.cmd` to make changes, then compile it into `boot.scr` using the mkimage command.
 
 Normally, these files do not need modification. If adjustments are necessary, follow the steps below.
 
@@ -1731,7 +1731,7 @@ reboot
 
 ### 12.19 How to Enable Remote Desktop and Modify the Default Port
 
-In the software center `armbian-software`, selecting `201` installs a desktop environment. During installation, you will be prompted to enable remote desktop — enter `y` to enable. The default remote desktop port is `3389`. To use a custom port:
+In the software center `coreos-software`, selecting `201` installs a desktop environment. During installation, you will be prompted to enable remote desktop — enter `y` to enable. The default remote desktop port is `3389`. To use a custom port:
 
 ```shell
 sudo nano /etc/xrdp/xrdp.ini

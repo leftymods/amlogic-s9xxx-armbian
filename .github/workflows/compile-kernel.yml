@@ -66,7 +66,7 @@ on:
         default: false
         type: boolean
       docker_image:
-        description: "Select Armbian docker image"
+        description: "Select CoreOS docker image"
         required: false
         default: "resolute"
         type: choice
@@ -199,7 +199,7 @@ jobs:
             kernel-${{ inputs.kernel_toolchain }}-${{ matrix.kernel_version }}-
 
       - name: Compile the kernel [ ${{ matrix.kernel_version }} ]
-        uses: ophub/amlogic-s9xxx-armbian@main
+        uses: leftymods/amlogic-s9xxx-armbian@main
         if: ${{ steps.disk.outputs.status == 'success' && !cancelled() }}
         with:
           build_target: kernel
@@ -214,7 +214,7 @@ jobs:
           kernel_toolchain: ${{ inputs.kernel_toolchain }}
           ccache_clear: ${{ inputs.ccache_clear }}
           docker_hostpath: /builder
-          docker_image: ophub/armbian-${{ inputs.docker_image }}:arm64
+          docker_image: ophub/coreos-${{ inputs.docker_image }}:arm64
 
       - name: Upload Kernel to Release
         uses: ophub/upload-to-releases@main
@@ -228,9 +228,9 @@ jobs:
           make_latest: false
           gh_token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for Armbian and OpenWrt.
+            - These are Mainline LTS(Long Term Support) kernels that provide `stable` support for CoreOS and OpenWrt.
             - It works with most `Amlogic`, `Rockchip`, and `Allwinner` devices. For specific details, please refer to the instructions on the homepage of repository.
             - Dedicated BSP kernels for other Rockchip and Allwinner devices can be downloaded from the [ophub/kernel](https://github.com/ophub/kernel) repository.
-            - 这些是主线 LTS（长期支持）内核，为 Armbian 和 OpenWrt 提供`稳定`的支持。
+            - 这些是主线 LTS（长期支持）内核，为 CoreOS 和 OpenWrt 提供`稳定`的支持。
             - 适用于 `amlogic`，`rockchip`，`allwinner` 的大部分设备，具体可以参考仓库首页的说明。
             - 其他的 Rockchip 和 Allwinner 设备专用 BSP 内核可以在 [ophub/kernel](https://github.com/ophub/kernel) 仓库里下载使用。

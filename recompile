@@ -5,13 +5,13 @@
 # License version 2. This program is licensed "as is" without any
 # warranty of any kind, whether express or implied.
 #
-# This file is a part of the Rebuild Armbian
-# https://github.com/ophub/amlogic-s9xxx-armbian
+# This file is a part of the Rebuild CoreOS
+# https://github.com/leftymods/amlogic-s9xxx-armbian
 #
-# Description: Compile the kernel using an Armbian Docker container
+# Description: Compile the kernel using an CoreOS Docker container
 # Copyright (C) 2021~ https://www.kernel.org
 # Copyright (C) 2021~ https://github.com/unifreq
-# Copyright (C) 2021~ https://github.com/ophub/amlogic-s9xxx-armbian
+# Copyright (C) 2021~ https://github.com/leftymods/amlogic-s9xxx-armbian
 #
 # Command: sudo ./recompile
 # Command optional parameters please refer to the source code repository
@@ -22,7 +22,7 @@
 #
 # init_var                 : Initialize all variables
 # install_docker_engine    : Install Docker engine if not present
-# launch_docker_container  : Launch the Armbian Docker container
+# launch_docker_container  : Launch the CoreOS Docker container
 # configure_and_compile    : Configure the Docker environment and compile the kernel
 #
 #=============================== Set make environment variables ===============================
@@ -34,9 +34,9 @@ kernel_patch_path="${current_path}/compile-kernel/tools/patch"
 
 # Set Docker host mount directory and image
 docker_hostpath="${PWD}"
-docker_image="ophub/armbian-trixie:arm64"
-docker_container="armbian-ophub"
-docker_script="/usr/sbin/armbian-kernel"
+docker_image="ophub/coreos-trixie:arm64"
+docker_container="coreos-ophub"
+docker_script="/usr/sbin/coreos-kernel"
 
 # Get host architecture and release info
 arch_info="$(uname -m)"
@@ -76,7 +76,7 @@ init_var() {
             docker_image="${2}"
             shift 2
             ;;
-        # Ignore parameters used by the Armbian Docker container
+        # Ignore parameters used by the CoreOS Docker container
         -k | -a | -n | -m | -p | -r | -t | -c | -d | -s | -z | -l | -f)
             shift 2
             ;;
@@ -98,14 +98,14 @@ install_docker_engine() {
 }
 
 launch_docker_container() {
-    echo -e "${STEPS} Launching the Armbian Docker container..."
+    echo -e "${STEPS} Launching the CoreOS Docker container..."
 
-    # Check if the Armbian Docker container is running
+    # Check if the CoreOS Docker container is running
     if [[ "$(docker ps -q -f name=${docker_container})" ]]; then
         echo -e "${INFO} The docker container [ ${docker_container} ] is running."
         container_freshly_started="no"
     else
-        # Remove the stopped Armbian Docker container
+        # Remove the stopped CoreOS Docker container
         [[ "$(docker ps -aq -f status=exited -f name=${docker_container})" ]] && {
             echo -e "${INFO} Removing the stopped Docker container [ ${docker_container} ]..."
             docker rm -f ${docker_container} >/dev/null 2>&1
@@ -127,7 +127,7 @@ launch_docker_container() {
         [[ -d "${compile_path}" ]] || mkdir -p ${compile_path}
         [[ -d "${ccache_path}" ]] || mkdir -p ${ccache_path}
 
-        # Pull the Armbian Docker image. Use --restart=no because this is a one-shot
+        # Pull the CoreOS Docker image. Use --restart=no because this is a one-shot
         # build container; auto-restart on host reboot is not desirable here.
         echo -e "${INFO} Pulling the Docker image: [ ${docker_image} ]..."
         docker run -d --privileged \
@@ -184,7 +184,7 @@ echo -e "${INFO} The host environment [ ${host_id}: ${host_release} / ${arch_inf
 init_var "${@}"
 # Install Docker engine if it is not installed
 [[ -x "$(command -v docker)" ]] || install_docker_engine
-# Launch the Armbian Docker container
+# Launch the CoreOS Docker container
 launch_docker_container
 # Configure the Docker environment and compile the kernel
 configure_and_compile "${@}"

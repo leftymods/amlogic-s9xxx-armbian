@@ -2,7 +2,7 @@
 
 [English Instructions](README.md) | [中文说明](README.cn.md) | [日本語説明](README.ja.md)
 
-本プロジェクトでコンパイルしたカーネルは `Armbian` と `OpenWrt` システムに対応しており、[amlogic-s9xxx-armbian](https://github.com/ophub/amlogic-s9xxx-armbian)、[amlogic-s9xxx-openwrt](https://github.com/ophub/amlogic-s9xxx-openwrt)、[flippy-openwrt-actions](https://github.com/ophub/flippy-openwrt-actions)、[unifreq/openwrt_packit](https://github.com/unifreq/openwrt_packit) などのプロジェクトで使用できます。ファームウェアのコンパイル時に統合することも、既存のシステムにインストールして使用することもできます。
+本プロジェクトでコンパイルしたカーネルは `CoreOS` と `OpenWrt` システムに対応しており、[amlogic-s9xxx-armbian](https://github.com/leftymods/amlogic-s9xxx-armbian)、[amlogic-s9xxx-openwrt](https://github.com/ophub/amlogic-s9xxx-openwrt)、[flippy-openwrt-actions](https://github.com/ophub/flippy-openwrt-actions)、[unifreq/openwrt_packit](https://github.com/unifreq/openwrt_packit) などのプロジェクトで使用できます。ファームウェアのコンパイル時に統合することも、既存のシステムにインストールして使用することもできます。
 
 必要に応じてカーネル設定を調整し、ドライバやパッチを追加できます。また、`5.10.95-happy-new-year`、`5.10.96-beijing-winter-olympics`、`5.10.99-valentines-day` など、個性的な署名付きカーネルをコンパイルすることもできます。
 
@@ -14,7 +14,7 @@
 
 - ### Ubuntu システムでの実行
 
-1. リポジトリをローカルにクローン：`git clone --depth 1 https://github.com/ophub/amlogic-s9xxx-armbian.git`
+1. リポジトリをローカルにクローン：`git clone --depth 1 https://github.com/leftymods/amlogic-s9xxx-armbian.git`
 
 2. 必要なパッケージのインストール（Ubuntu 24.04 を例として）：
 
@@ -24,18 +24,18 @@
 sudo apt-get update -y
 sudo apt-get full-upgrade -y
 # For Ubuntu-24.04
-sudo apt-get install -y $(cat compile-kernel/tools/script/ubuntu2404-build-armbian-depends)
+sudo apt-get install -y $(cat compile-kernel/tools/script/ubuntu2404-build-coreos-depends)
 ```
 
 3. `~/amlogic-s9xxx-armbian` ルートディレクトリに移動し、`sudo ./recompile -k 5.15.100` などの指定パラメータコマンドを実行してカーネルをコンパイルします。スクリプトはコンパイル環境とカーネルソースコードを自動的にダウンロード・インストールし、すべての設定を完了します。コンパイル済みのカーネルファイルは現在のソースツリーの `compile-kernel/output` ディレクトリ、または `-h` パラメータで指定したディレクトリに保存されます。
 
-- ### Armbian システムでの実行
+- ### CoreOS システムでの実行
 
-[Armbian](https://github.com/ophub/amlogic-s9xxx-armbian/releases) システム上で直接カーネルをコンパイルすることも、Ubuntu/Debian などのシステム上で [Docker](https://hub.docker.com/u/ophub) コンテナを介して Armbian システムを実行してカーネルをコンパイルすることもできます。Armbian システムの Docker イメージの作成方法は [armbian_docker](./tools/script/docker) ビルドスクリプトを参照してください。
+[CoreOS](https://github.com/leftymods/amlogic-s9xxx-armbian/releases) システム上で直接カーネルをコンパイルすることも、Ubuntu/Debian などのシステム上で [Docker](https://hub.docker.com/u/ophub) コンテナを介して CoreOS システムを実行してカーネルをコンパイルすることもできます。CoreOS システムの Docker イメージの作成方法は [coreos_docker](./tools/script/docker) ビルドスクリプトを参照してください。
 
-1. ローカルコンパイル環境と設定ファイルの更新：`armbian-kernel -u`
+1. ローカルコンパイル環境と設定ファイルの更新：`coreos-kernel -u`
 
-2. カーネルのコンパイル：`armbian-kernel -k 5.15.100` などの指定パラメータコマンドを実行してカーネルをコンパイルします。スクリプトはコンパイル環境とカーネルソースコードを自動的にダウンロード・インストールし、すべての設定を完了します。コンパイル済みのカーネルファイルは `/opt/kernel/compile-kernel/output` ディレクトリに保存されます。
+2. カーネルのコンパイル：`coreos-kernel -k 5.15.100` などの指定パラメータコマンドを実行してカーネルをコンパイルします。スクリプトはコンパイル環境とカーネルソースコードを自動的にダウンロード・インストールし、すべての設定を完了します。コンパイル済みのカーネルファイルは `/opt/kernel/compile-kernel/output` ディレクトリに保存されます。
 
 - ### ローカルコンパイルパラメータの説明
 
@@ -46,7 +46,7 @@ sudo apt-get install -y $(cat compile-kernel/tools/script/ubuntu2404-build-armbi
 | -a     | AutoKernel  | 同系列の最新バージョンカーネルを自動的に採用するかどうかを設定します。`true` に設定すると、`-k` で指定したカーネル（例：`5.15.100`）と同じ系列にさらに新しいバージョンがあるか自動的にチェックし、存在する場合は最新版に自動切り替えします。`false` に設定すると指定バージョンをコンパイルします。デフォルト値：`true` |
 | -m     | MakePackage | カーネルビルドのパッケージリストを設定します。`all` に設定すると `Image、modules、dtbs` のすべてのファイルを生成し、`dtbs` に設定すると DTB ファイル3つのみ生成します。デフォルト値：`all` |
 | -f     | configFlavor | カーネルリポジトリ [ophub/kernel](https://github.com/ophub/kernel/tree/main/kernel-config/release) から設定ファイル `config-*` をローカルの [tools/config](tools/config) ディレクトリにダウンロードする際のフレーバーを指定します。対応するカーネルバージョンの設定ファイルがローカルに既に存在し、このパラメータが未設定の場合はダウンロードをスキップします。選択肢はカーネルリポジトリに存在する[ディレクトリ名](https://github.com/ophub/kernel/tree/main/kernel-config/release)で、例：`stable` / `rk3588` / `rk35xx`。デフォルト値：`stable` |
-| -p     | AutoPatch   | カスタムカーネルパッチを適用するかどうかを設定します。`true` に設定すると [tools/patch](tools/patch) ディレクトリのカーネルパッチを使用します。詳細は[カーネルパッチの追加方法](../documents/README.ja.md#9-armbian-カーネルのコンパイル)を参照してください。デフォルト値：`false` |
+| -p     | AutoPatch   | カスタムカーネルパッチを適用するかどうかを設定します。`true` に設定すると [tools/patch](tools/patch) ディレクトリのカーネルパッチを使用します。詳細は[カーネルパッチの追加方法](../documents/README.ja.md#9-coreos-カーネルのコンパイル)を参照してください。デフォルト値：`false` |
 | -n     | CustomName  | カーネルのカスタム署名を設定します。例えば `-ophub` に設定すると、生成されるカーネル名は `5.15.100-ophub` になります。署名にスペースを含めないでください。デフォルト値：`-ophub` |
 | -t     | Toolchain   | カーネルコンパイルのツールチェーンを設定します。選択肢：`clang / gcc / gcc-<version>`。デフォルト値：`gcc` |
 | -z     | CompressFormat | カーネル内の initrd で使用する圧縮フォーマットを設定します。選択肢：`xz / gzip / zstd / lzma`。デフォルト値：`xz` |
@@ -55,7 +55,7 @@ sudo apt-get install -y $(cat compile-kernel/tools/script/ubuntu2404-build-armbi
 | -l     | EnableLog   | コンパイルプロセスをログファイルに記録するかどうかを設定します：`/var/log/kernel_compile_*.log`。選択肢：`true / false`。デフォルト値：`false` |
 | -c     | CcacheClear | コンパイル前に ccache キャッシュをクリアするかどうかを設定します。選択肢：`true / false`。デフォルト値：`false` |
 | -h     | DockerHostpath | カーネルコンパイル時の Docker コンテナのホストマシン上のマウントパスを設定します。デフォルトは現在のディレクトリを使用します。 |
-| -i     | DockerImage | カーネルコンパイル用の Docker コンテナイメージを設定します。デフォルト値：`ophub/armbian-trixie:arm64` |
+| -i     | DockerImage | カーネルコンパイル用の Docker コンテナイメージを設定します。デフォルト値：`ophub/coreos-trixie:arm64` |
 
 - `sudo ./recompile` ：デフォルト設定でカーネルをコンパイルします。
 - `sudo ./recompile -k 5.15.100` ：デフォルト設定を使用し、`-k` でコンパイルするカーネルバージョンを指定します。複数バージョンを同時にコンパイルする場合は `_` で連結します。
@@ -69,13 +69,13 @@ sudo apt-get install -y $(cat compile-kernel/tools/script/ubuntu2404-build-armbi
 
 ## GitHub Actions でのカーネルコンパイル
 
-1. [Action](https://github.com/ophub/amlogic-s9xxx-armbian/actions) ページで **_`Compile the kernel`_** を選択し、**_`Run workflow`_** ボタンをクリックするとコンパイルを開始できます。
+1. [Action](https://github.com/leftymods/amlogic-s9xxx-armbian/actions) ページで **_`Compile the kernel`_** を選択し、**_`Run workflow`_** ボタンをクリックするとコンパイルを開始できます。
 
 2. テンプレート [compile-kernel-via-docker.yml](../.github/workflows/compile-kernel-via-docker.yml) を参照してください。コードは以下の通りです：
 
 ```yaml
 - name: Compile the kernel
-  uses: ophub/amlogic-s9xxx-armbian@main
+  uses: leftymods/amlogic-s9xxx-armbian@main
   with:
     build_target: kernel
     kernel_version: 6.12.y_6.18.y
@@ -112,7 +112,7 @@ uses: YOUR-REPO/amlogic-s9xxx-armbian@main
 | enable_log        | false            | コンパイルプロセスをログファイルに記録するかどうかを設定します：`/var/log/kernel_compile_*.log`。デフォルト値：`false`。機能は `-l` を参照 |
 | ccache_clear      | false            | コンパイル前に ccache キャッシュをクリアするかどうかを設定します。デフォルト値：`false`。機能は `-c` を参照 |
 | docker_hostpath   | .                | カーネルコンパイル時の Docker コンテナのホストマシン上のマウントパスを設定します。デフォルトは現在のディレクトリ。機能は `-h` を参照 |
-| docker_image      | ophub/armbian-trixie:arm64 | カーネルコンパイル用の Docker コンテナイメージを設定します。機能は `-i` を参照 |
+| docker_image      | ophub/coreos-trixie:arm64 | カーネルコンパイル用の Docker コンテナイメージを設定します。機能は `-i` を参照 |
 
 - ### GitHub Action 出力変数の説明
 
@@ -127,19 +127,19 @@ uses: YOUR-REPO/amlogic-s9xxx-armbian@main
 
 ## カーネル使用ガイド
 
-本プロジェクトでコンパイルしたカーネルは `Armbian` と `OpenWrt` システムに対応しています。以下では ophub のプロジェクトを例に説明します。
+本プロジェクトでコンパイルしたカーネルは `CoreOS` と `OpenWrt` システムに対応しています。以下では ophub のプロジェクトを例に説明します。
 
-### Armbian システムでの使用
+### CoreOS システムでの使用
 
-以下では、Armbian ファームウェアのコンパイル時にカーネルを統合する方法と、既存のシステムにカーネルをインストールする方法をそれぞれ紹介します。
+以下では、CoreOS ファームウェアのコンパイル時にカーネルを統合する方法と、既存のシステムにカーネルをインストールする方法をそれぞれ紹介します。
 
-- #### カーネルを使用した Armbian ファームウェアのコンパイル
+- #### カーネルを使用した CoreOS ファームウェアのコンパイル
 
-Armbian ファームウェアのコンパイルはローカル操作と github.com の Actions を使用したオンラインコンパイルの両方をサポートしています。ローカルコンパイル方法の詳細は[ローカルパッケージング](../README.ja.md#ローカルパッケージング)を、Actions を使用したオンラインコンパイル方法の詳細は[GitHub Actions でのコンパイル](../README.ja.md#github-actionsを使用したコンパイル)を参照してください。
+CoreOS ファームウェアのコンパイルはローカル操作と github.com の Actions を使用したオンラインコンパイルの両方をサポートしています。ローカルコンパイル方法の詳細は[ローカルパッケージング](../README.ja.md#ローカルパッケージング)を、Actions を使用したオンラインコンパイル方法の詳細は[GitHub Actions でのコンパイル](../README.ja.md#github-actionsを使用したコンパイル)を参照してください。
 
-- #### 既存の Armbian システムへのカーネルインストール
+- #### 既存の CoreOS システムへのカーネルインストール
 
-`armbian-update` コマンドを使用して、コンパイル済みのカーネルを既存の Armbian システムにインストールできます。具体的な操作方法の詳細は[Armbian カーネルの更新](../README.ja.md#armbianカーネルの更新)を参照してください。
+`coreos-update` コマンドを使用して、コンパイル済みのカーネルを既存の CoreOS システムにインストールできます。具体的な操作方法の詳細は[CoreOS カーネルの更新](../README.ja.md#coreosカーネルの更新)を参照してください。
 
 - #### カスタムドライバモジュールのコンパイル
 

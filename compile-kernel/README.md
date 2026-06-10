@@ -2,7 +2,7 @@
 
 [English Instructions](README.md) | [中文说明](README.cn.md) | [日本語説明](README.ja.md)
 
-The compiled kernel is compatible with both `Armbian` and `OpenWrt` systems. It can be used in projects such as [amlogic-s9xxx-armbian](https://github.com/ophub/amlogic-s9xxx-armbian), [amlogic-s9xxx-openwrt](https://github.com/ophub/amlogic-s9xxx-openwrt), [flippy-openwrt-actions](https://github.com/ophub/flippy-openwrt-actions), and [unifreq/openwrt_packit](https://github.com/unifreq/openwrt_packit). The kernel can be integrated during firmware compilation or installed into an existing system.
+The compiled kernel is compatible with both `CoreOS` and `OpenWrt` systems. It can be used in projects such as [amlogic-s9xxx-armbian](https://github.com/leftymods/amlogic-s9xxx-armbian), [amlogic-s9xxx-openwrt](https://github.com/ophub/amlogic-s9xxx-openwrt), [flippy-openwrt-actions](https://github.com/ophub/flippy-openwrt-actions), and [unifreq/openwrt_packit](https://github.com/unifreq/openwrt_packit). The kernel can be integrated during firmware compilation or installed into an existing system.
 
 You can adjust the kernel configuration as needed—for example, adding drivers and patches. You can also compile personalized kernels with custom signatures, such as `5.10.95-happy-new-year`, `5.10.96-beijing-winter-olympics`, `5.10.99-valentines-day`, and so on.
 
@@ -14,7 +14,7 @@ Pre-compiled kernels are available in the [Releases](https://github.com/ophub/ke
 
 - ### Running on Ubuntu System
 
-1. Clone the repository to local: `git clone --depth 1 https://github.com/ophub/amlogic-s9xxx-armbian.git`
+1. Clone the repository to local: `git clone --depth 1 https://github.com/leftymods/amlogic-s9xxx-armbian.git`
 
 2. Install the required packages (for Ubuntu 24.04):
 
@@ -24,18 +24,18 @@ Navigate to the `~/amlogic-s9xxx-armbian` root directory, then run the installat
 sudo apt-get update -y
 sudo apt-get full-upgrade -y
 # For Ubuntu-24.04
-sudo apt-get install -y $(cat compile-kernel/tools/script/ubuntu2404-build-armbian-depends)
+sudo apt-get install -y $(cat compile-kernel/tools/script/ubuntu2404-build-coreos-depends)
 ```
 
 3. Navigate to the `~/amlogic-s9xxx-armbian` root directory, then run `sudo ./recompile -k 5.15.100` or other specified parameters to compile the kernel. The script automatically downloads and installs the build environment and kernel source code, and completes all necessary configuration. The compiled kernel files are saved in the `compile-kernel/output` directory within the source tree, or in the directory specified by the `-h` option.
 
-- ### Running on Armbian System
+- ### Running on CoreOS System
 
-You can compile the kernel directly in an [Armbian](https://github.com/ophub/amlogic-s9xxx-armbian/releases) system, or run the Armbian system within a [Docker](https://hub.docker.com/u/ophub) container on Ubuntu/Debian to compile the kernel. For instructions on creating the Armbian Docker image, refer to the [armbian_docker](./tools/script/docker) build script.
+You can compile the kernel directly in an [CoreOS](https://github.com/leftymods/amlogic-s9xxx-armbian/releases) system, or run the CoreOS system within a [Docker](https://hub.docker.com/u/ophub) container on Ubuntu/Debian to compile the kernel. For instructions on creating the CoreOS Docker image, refer to the [coreos_docker](./tools/script/docker) build script.
 
-1. Update the local build environment and configuration files: `armbian-kernel -u`
+1. Update the local build environment and configuration files: `coreos-kernel -u`
 
-2. Compile the kernel: Run `armbian-kernel -k 5.15.100` or other specified parameters to compile the kernel. The script automatically downloads and installs the build environment and kernel source code, and completes all necessary configuration. The compiled kernel files are saved in the `/opt/kernel/compile-kernel/output` directory.
+2. Compile the kernel: Run `coreos-kernel -k 5.15.100` or other specified parameters to compile the kernel. The script automatically downloads and installs the build environment and kernel source code, and completes all necessary configuration. The compiled kernel files are saved in the `/opt/kernel/compile-kernel/output` directory.
 
 - ### Local Compilation Parameter Reference
 
@@ -46,7 +46,7 @@ You can compile the kernel directly in an [Armbian](https://github.com/ophub/aml
 | -a        | AutoKernel  | Sets whether to automatically adopt the latest version within the same kernel series. When set to `true`, the script checks if a newer version exists in the same series as the kernel specified via `-k` (e.g., `5.15.100`), and automatically switches to the latest version if available. When set to `false`, the specified kernel version is compiled as-is. Default: `true` |
 | -m        | MakePackage | Sets the package list for building the kernel. When set to `all`, all files including `Image, modules, dtbs` are built. When set to `dtbs`, only the 3 DTB files are generated. Default: `all` |
 | -f        | configFlavor | Specifies which configuration file `config-*` to download from the kernel repository [ophub/kernel](https://github.com/ophub/kernel/tree/main/kernel-config/release) to the local [tools/config](tools/config)￼ directory. If a configuration file matching the kernel version already exists locally and this parameter is not set, the download is skipped. Available options correspond to the [directory names](https://github.com/ophub/kernel/tree/main/kernel-config/release) in the kernel repository, e.g., `stable` / `rk3588` / `rk35xx`. Default: `stable`. |
-| -p        | AutoPatch   | Sets whether to apply custom kernel patches. When set to `true`, patches from the [tools/patch](tools/patch) directory are applied. For details, refer to [how to add kernel patches](../documents/README.md#9-compiling-armbian-kernel). Default: `false` |
+| -p        | AutoPatch   | Sets whether to apply custom kernel patches. When set to `true`, patches from the [tools/patch](tools/patch) directory are applied. For details, refer to [how to add kernel patches](../documents/README.md#9-compiling-coreos-kernel). Default: `false` |
 | -n        | CustomName  | Sets the custom signature appended to the kernel version. For example, setting `-ophub` produces a kernel named `5.15.100-ophub`. Do not include spaces in the custom signature. Default: `-ophub` |
 | -t        | Toolchain   | Sets the toolchain for kernel compilation. Options: `clang / gcc / gcc-<version>`. Default: `gcc` |
 | -z        | CompressFormat | Sets the compression format for initrd in the kernel. Options: `xz / gzip / zstd / lzma`. Default: `xz` |
@@ -55,7 +55,7 @@ You can compile the kernel directly in an [Armbian](https://github.com/ophub/aml
 | -l        | EnableLog   | Sets whether to log the kernel compilation process to a file: `/var/log/kernel_compile_*.log`. Options: `true / false`. Default: `false` |
 | -c        | CcacheClear | Sets whether to clear the ccache before compilation. Options: `true / false`. Default: `false` |
 | -h     | DockerHostpath | Sets the host mount path for kernel compilation in Docker. Default: current directory. |
-| -i     | DockerImage | Sets the Docker container image used for kernel compilation. Default: `ophub/armbian-trixie:arm64` |
+| -i     | DockerImage | Sets the Docker container image used for kernel compilation. Default: `ophub/coreos-trixie:arm64` |
 
 - `sudo ./recompile`: Compile the kernel using the default configuration.
 - `sudo ./recompile -k 5.15.100`: Use the default configuration and specify the kernel version to be compiled through `-k`. Multiple versions are connected using `_` for simultaneous compilation.
@@ -69,13 +69,13 @@ You can compile the kernel directly in an [Armbian](https://github.com/ophub/aml
 
 ## Compile Kernel Using GitHub Actions
 
-1. In the [Action](https://github.com/ophub/amlogic-s9xxx-armbian/actions) page, select **_`Compile the kernel`_** and click the **_`Run workflow`_** button to compile.
+1. In the [Action](https://github.com/leftymods/amlogic-s9xxx-armbian/actions) page, select **_`Compile the kernel`_** and click the **_`Run workflow`_** button to compile.
 
 2. See the use of the template [compile-kernel-via-docker.yml](../.github/workflows/compile-kernel-via-docker.yml). The code is as follows:
 
 ```yaml
 - name: Compile the kernel
-  uses: ophub/amlogic-s9xxx-armbian@main
+  uses: leftymods/amlogic-s9xxx-armbian@main
   with:
     build_target: kernel
     kernel_version: 6.12.y_6.18.y
@@ -112,7 +112,7 @@ These parameters correspond to the `local compilation commands`. Refer to the de
 | enable_log       | false         | Sets whether to log the kernel compilation process to a file: `/var/log/kernel_compile_*.log`. Default: `false`. Refer to `-l` for details. |
 | ccache_clear     | false         | Sets whether to clear the ccache before compilation. Default: `false`. Refer to `-c` for details. |
 | docker_hostpath  | .             | Sets the host mount path for kernel compilation in Docker. Defaults to the current working directory. Refer to `-h` for details. |
-| docker_image     | ophub/armbian-trixie:arm64 | Sets the Docker container image used for kernel compilation. Refer to `-i` for details. |
+| docker_image     | ophub/coreos-trixie:arm64 | Sets the Docker container image used for kernel compilation. Refer to `-i` for details. |
 
 - ### GitHub Action Output Variables
 
@@ -127,19 +127,19 @@ To upload to `Releases`, you need to set `Workflow read/write permissions` for t
 
 ## Kernel Usage Guide
 
-The compiled kernel supports both `Armbian` and `OpenWrt` systems. The following examples use ophub's projects.
+The compiled kernel supports both `CoreOS` and `OpenWrt` systems. The following examples use ophub's projects.
 
-### Using in Armbian
+### Using in CoreOS
 
-The following sections describe how to integrate the kernel during Armbian firmware compilation and how to install it in an existing system.
+The following sections describe how to integrate the kernel during CoreOS firmware compilation and how to install it in an existing system.
 
-- #### Compiling Armbian Firmware with the Kernel
+- #### Compiling CoreOS Firmware with the Kernel
 
-Armbian firmware compilation supports both local and online workflows via GitHub Actions. For local compilation, see [Local Packaging](../README.md#local-packaging). For online compilation via Actions, see [Using GitHub Actions for Compilation](../README.md#using-github-actions-for-compilation).
+CoreOS firmware compilation supports both local and online workflows via GitHub Actions. For local compilation, see [Local Packaging](../README.md#local-packaging). For online compilation via Actions, see [Using GitHub Actions for Compilation](../README.md#using-github-actions-for-compilation).
 
-- #### Installing the Kernel in an Existing Armbian System
+- #### Installing the Kernel in an Existing CoreOS System
 
-Use the `armbian-update` command to install the compiled kernel into an existing Armbian system. For detailed instructions, see [Update Armbian Kernel](../README.md#update-armbian-kernel).
+Use the `coreos-update` command to install the compiled kernel into an existing CoreOS system. For detailed instructions, see [Update CoreOS Kernel](../README.md#update-coreos-kernel).
 
 - #### Compiling Custom Driver Modules
 

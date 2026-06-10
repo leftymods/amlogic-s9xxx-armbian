@@ -307,7 +307,7 @@ jobs:
             export LOCAL_KERNEL_PATH="/builder/kernel_dl"
           fi
 
-          ARMBIAN_PATH="/builder/rootfs_dl/${{ env.rootfs_asset }}" \
+          COREOS_PATH="/builder/rootfs_dl/${{ env.rootfs_asset }}" \
           sudo ./rebuild "${make_args[@]}"
 
           echo "status=success" >> ${GITHUB_OUTPUT}

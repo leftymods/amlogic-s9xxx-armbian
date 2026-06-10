@@ -1,5 +1,5 @@
 FROM scratch
-ADD armbian-rootfs.tar.gz /
+ADD coreos-rootfs.tar.gz /
 
 # Install necessary packages
 RUN apt-get update && apt-get install -y \

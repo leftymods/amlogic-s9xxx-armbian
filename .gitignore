@@ -1,11 +1,11 @@
 !.gitignore
 /build
 /tmp_dir
-/build-armbian/kernel
-/build-armbian/u-boot
+/build-coreos/kernel
+/build-coreos/u-boot
 /compile-kernel/kernel
 /compile-kernel/output
-/compile-kernel/tools/armbian
+/compile-kernel/tools/coreos
 .DS_Store
 npm-debug.log*
 *.rej
