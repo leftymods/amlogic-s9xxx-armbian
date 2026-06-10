@@ -78,14 +78,10 @@ on:
       config_flavor:
         description: "Set the kernel config flavor"
         required: false
-        default: ""
+        default: "stable"
         type: choice
         options:
-          - ""
           - stable
-          - rk3588
-          - rk35xx
-          - h6
       kernel_config:
         description: "Path to custom kernel config directory"
         required: false
