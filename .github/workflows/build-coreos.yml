@@ -27,8 +27,18 @@ on:
         description: "Set u-boot board target"
         required: false
         default: "all"
+
+      # Kernel source section
+      kernel_source_mode:
+        description: "Kernel source: compile or use pre-built from Releases"
+        required: false
+        default: "compile"
+        type: choice
+        options:
+          - compile
+          - from_releases
       kernel_version:
-        description: "Select kernel version"
+        description: "Kernel version (for compile mode)"
         required: false
         default: "6.12.y"
         type: choice
@@ -38,13 +48,31 @@ on:
           - 6.12.y
           - 6.18.y
       kernel_toolchain:
-        description: "Select kernel toolchain"
+        description: "Kernel toolchain (for compile mode)"
         required: false
         default: "gcc"
         type: choice
         options:
           - gcc
           - clang
+      kernel_release_tag:
+        description: "Kernel Release tag to use (e.g. kernel_stable)"
+        required: false
+        default: ""
+
+      # Rootfs source section
+      rootfs_source_mode:
+        description: "Rootfs source: build or use pre-built from Releases"
+        required: false
+        default: "build"
+        type: choice
+        options:
+          - build
+          - from_releases
+      rootfs_release_tag:
+        description: "Rootfs Release tag to use (e.g. CoreOS_Nebula_2025.03)"
+        required: false
+        default: ""
 
 env:
   TZ: Etc/UTC
@@ -124,8 +152,44 @@ jobs:
           df -Th
           echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Clone Armbian build system
+      # ============================================================
+      # Download pre-built kernel from Releases if requested
+      # ============================================================
+      - name: Download kernel from Releases
+        id: kernel_dl
+        if: ${{ inputs.kernel_source_mode == 'from_releases' && inputs.kernel_release_tag != '' }}
+        working-directory: /builder
+        run: |
+          TAG="${{ inputs.kernel_release_tag }}"
+          echo "Downloading kernel from release tag: ${TAG}"
+
+          # Query the release by tag
+          release_data=$(curl -s \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG}")
+
+          # Download all kernel packages
+          mkdir -p /builder/kernel_dl
+          echo "${release_data}" | jq -r '.assets[]?.name' | while read name; do
+            url=$(echo "${release_data}" | jq -r --arg n "$name" '.assets[] | select(.name == $n) | .url')
+            echo "Downloading: ${name}"
+            curl -fsSL \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/octet-stream" \
+              "${url}" \
+              -o "/builder/kernel_dl/${name}"
+          done
+
+          ls -lh /builder/kernel_dl/
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      # ============================================================
+      # Clone build system only if building from source
+      # ============================================================
+      - name: Clone build system
         id: clone
+        if: ${{ inputs.rootfs_source_mode == 'build' }}
         working-directory: /builder
         run: |
           git clone -q --single-branch --depth=1 --branch=main https://github.com/armbian/build.git build
@@ -133,9 +197,9 @@ jobs:
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Patch branding to CoreOS
+        if: ${{ inputs.rootfs_source_mode == 'build' }}
         working-directory: /builder/build
         run: |
-          # Replace branding across the build system
           grep -rl "Armbian" lib/ config/ extensions/ tools/ --include="*.sh" --include="*.conf" --include="*.config" \
             --include="*.json" --include="*.php" 2>/dev/null | while read f; do
             sed -i 's/Armbian/CoreOS/g; s/armbian/coreos/g; s/ARMBIAN/COREOS/g' "$f" 2>/dev/null || true
@@ -143,32 +207,81 @@ jobs:
           grep -rl "armbian" config/ --include="*.conf" --include="*.sh" 2>/dev/null | while read f; do
             sed -i 's/armbian/coreos/g; s/Armbian/CoreOS/g' "$f" 2>/dev/null || true
           done
-          # Patch maintainer name
           find . -name "control" -path "*/DEBIAN/*" | while read f; do
             sed -i 's/Maintainer:.*/Maintainer: leftymods <ggalab33@gmail.com>/' "$f" 2>/dev/null || true
           done
-          # Fix package names
           find . -name "*.sh" | while read f; do
             sed -i 's/armbian-/coreos-/g' "$f" 2>/dev/null || true
           done
-          # Fix package name in control files
           find . -name "control" | while read f; do
             sed -i 's/Package: armbian-/Package: coreos-/g' "$f" 2>/dev/null || true
           done
           echo "Branding patched to CoreOS by leftymods"
 
+      # ============================================================
+      # Download pre-built rootfs image from Releases if requested
+      # ============================================================
+      - name: Download rootfs from Releases
+        id: rootfs_dl
+        if: ${{ inputs.rootfs_source_mode == 'from_releases' && inputs.rootfs_release_tag != '' }}
+        working-directory: /builder
+        run: |
+          TAG="${{ inputs.rootfs_release_tag }}"
+          echo "Downloading rootfs from release tag: ${TAG}"
+
+          release_data=$(curl -s \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG}")
+
+          # Find and download rootfs tarball or .img.gz
+          mkdir -p /builder/rootfs_dl
+          echo "${release_data}" | jq -r '.assets[]?.name' | while read name; do
+            url=$(echo "${release_data}" | jq -r --arg n "$name" '.assets[] | select(.name == $n) | .url')
+            echo "Downloading: ${name}"
+            curl -fsSL \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/octet-stream" \
+              "${url}" \
+              -o "/builder/rootfs_dl/${name}"
+          done
+
+          ls -lh /builder/rootfs_dl/
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Extract rootfs image
+        if: ${{ steps.rootfs_dl.outputs.status == 'success' }}
+        working-directory: /builder/rootfs_dl
+        run: |
+          # Extract the downloaded image for use as base
+          for f in *.img.gz; do
+            [[ -f "$f" ]] && gzip -dkf "$f" && sync
+          done
+          for f in *.img.xz; do
+            [[ -f "$f" ]] && xz -dk "$f" && sync
+          done
+          for f in *.tar.gz; do
+            [[ -f "$f" ]] && tar -xzf "$f" && sync
+          done
+          ls -lh
+          echo "rootfs_asset=$(ls *.img 2>/dev/null | head -n 1)" >> ${GITHUB_ENV}
+
       - name: Enable QEMU for cross-compilation
+        if: ${{ inputs.rootfs_source_mode == 'build' }}
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
 
-      - name: Build CoreOS [ ${{ needs.setup.outputs.codename }} ]
+      # ============================================================
+      # Build full OS from source (when rootfs is not pre-built)
+      # ============================================================
+      - name: Build CoreOS from source [ ${{ needs.setup.outputs.codename }} ]
         id: compile
+        if: ${{ inputs.rootfs_source_mode == 'build' }}
         working-directory: /builder/build
         run: |
           config_board="${{ inputs.config_board }}"
           [[ -z "${config_board}" ]] && config_board="odroidn2"
 
-          # Build full OS image with all deb packages
           ./compile.sh RELEASE=${{ needs.setup.outputs.release }} BOARD=${config_board} BRANCH=current \
                        BUILD_MINIMAL=no BUILD_ONLY=default HOST=coreos \
                        BUILD_DESKTOP=no EXPERT=yes KERNEL_CONFIGURE=no \
@@ -178,39 +291,80 @@ jobs:
 
           echo "status=success" >> ${GITHUB_OUTPUT}
 
+      # ============================================================
+      # Rebuild using pre-built rootfs (kernel swap only)
+      # ============================================================
+      - name: Rebuild CoreOS with pre-built rootfs [ ${{ needs.setup.outputs.codename }} ]
+        id: rebuild
+        if: ${{ steps.rootfs_dl.outputs.status == 'success' }}
+        run: |
+          echo "Rebuilding CoreOS using pre-built rootfs with custom kernel..."
+
+          config_board="${{ inputs.config_board }}"
+          [[ -z "${config_board}" ]] && config_board="amlogic"
+
+          # Use the repo's own rebuild mechanism
+          cd ${{ github.workspace }}
+
+          make_args=()
+          make_args+=(-b "${config_board}")
+          make_args+=(-k "${{ inputs.kernel_version }}")
+          make_args+=(-a "true")
+
+          # If kernel was downloaded from releases, point to local files
+          if [[ "${{ inputs.kernel_source_mode }}" == "from_releases" ]]; then
+            make_args+=(-r "local")
+            export LOCAL_KERNEL_PATH="/builder/kernel_dl"
+          fi
+
+          ARMBIAN_PATH="/builder/rootfs_dl/${{ env.rootfs_asset }}" \
+          sudo ./rebuild "${make_args[@]}"
+
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      # ============================================================
+      # Collect all deb packages
+      # ============================================================
       - name: Collect all deb packages
         id: collect
-        working-directory: /builder/build
         run: |
           mkdir -p /builder/debs/coreos
-          DEB_STORAGE="output/debs"
-          if [[ -d "${DEB_STORAGE}" ]]; then
-            # Collect all generated .deb files
-            find "${DEB_STORAGE}" -name "*.deb" -exec cp -v {} /builder/debs/coreos/ \;
+
+          # Collect from build output
+          if [[ -d "/builder/build/output/debs" ]]; then
+            find "/builder/build/output/debs" -name "*.deb" -exec cp -v {} /builder/debs/coreos/ \;
           fi
-          # Also check common deb output directories
-          for d in output/images output/debs-cache .tmp/*/deb; do
-            if [[ -d "$d" ]]; then
-              find "$d" -name "*.deb" -exec cp -v {} /builder/debs/coreos/ \; 2>/dev/null || true
-            fi
-          done
+          if [[ -d "/builder/build/output/images" ]]; then
+            find "/builder/build/output/images" -name "*.deb" -exec cp -v {} /builder/debs/coreos/ \; 2>/dev/null || true
+          fi
+
+          # Collect kernel debs if downloaded from releases
+          if [[ -d "/builder/kernel_dl" ]]; then
+            find "/builder/kernel_dl" -name "*.deb" -exec cp -v {} /builder/debs/coreos/ \; 2>/dev/null || true
+            find "/builder/kernel_dl" -name "*.tar.gz" -exec cp -v {} /builder/debs/coreos/ \; 2>/dev/null || true
+          fi
+
           echo "Collected debs:"
           ls -lh /builder/debs/coreos/ 2>/dev/null || echo "No debs found"
 
-          # Create a summary
           cd /builder/debs
-          tar -czf coreos-all-debs.tar.gz coreos
+          tar -czf coreos-all-debs.tar.gz coreos 2>/dev/null || true
           ls -lh /builder/debs/
 
           echo "build_tag=CoreOS_${{ needs.setup.outputs.codename }}_arm64_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           echo "status=success" >> ${GITHUB_OUTPUT}
 
+      # ============================================================
+      # Upload artifacts
+      # ============================================================
       - name: Upload CoreOS image to Release
         uses: ophub/upload-to-releases@main
-        if: ${{ steps.compile.outputs.status == 'success' && !cancelled() }}
+        if: ${{ (steps.compile.outputs.status == 'success' || steps.rebuild.outputs.status == 'success') && !cancelled() }}
         with:
           tag: ${{ env.build_tag }}
-          artifacts: /builder/build/output/images/*
+          artifacts: |
+            /builder/build/output/images/*
+            /builder/rootfs_dl/*.img.gz
           allow_updates: true
           remove_artifacts: false
           replaces_artifacts: true
