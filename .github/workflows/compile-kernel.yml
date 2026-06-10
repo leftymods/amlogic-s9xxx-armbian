@@ -210,7 +210,7 @@ jobs:
           kernel_toolchain: ${{ inputs.kernel_toolchain }}
           ccache_clear: ${{ inputs.ccache_clear }}
           docker_hostpath: /builder
-          docker_image: ophub/coreos-${{ inputs.docker_image }}:arm64
+          docker_image: ophub/armbian-${{ inputs.docker_image }}:arm64
 
       - name: Upload Kernel to Release
         uses: ophub/upload-to-releases@main
