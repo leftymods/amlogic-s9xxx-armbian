@@ -87,9 +87,9 @@ on:
         required: false
         default: "false"
       kernel_sign:
-        description: "Kernel custom signature (e.g. -leftymods, -yourname)"
+        description: "Kernel custom signature (e.g. -AtriStation, -yourname)"
         required: false
-        default: "-leftymods"
+        default: "-AtriStation"
 
 env:
   TZ: Etc/UTC
