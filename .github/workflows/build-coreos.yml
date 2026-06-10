@@ -10,12 +10,11 @@ on:
   workflow_dispatch:
     inputs:
       set_release:
-        description: "Select OS Release"
+        description: "Select CoreOS Release"
         required: false
-        default: "all"
+        default: "trixie"
         type: choice
         options:
-          - all
           - trixie
           - bookworm
           - resolute
@@ -54,28 +53,29 @@ jobs:
   setup:
     runs-on: ubuntu-24.04
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      release: ${{ steps.codename.outputs.release }}
+      codename: ${{ steps.codename.outputs.codename }}
     steps:
-      - name: Set build matrix
-        id: set-matrix
+      - name: Map release to codename
+        id: codename
         run: |
-          if [[ "${{ inputs.set_release }}" == "all" ]]; then
-            MATRIX='{"include":[{"release":"trixie"},{"release":"bookworm"},{"release":"resolute"},{"release":"noble"}]}'
-          else
-            MATRIX='{"include":[{"release":"${{ inputs.set_release }}"}]}'
-          fi
-          echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
+          RELEASE="${{ inputs.set_release }}"
+          case "${RELEASE}" in
+            trixie)   CODENAME="Nebula" ;;
+            bookworm) CODENAME="Bookworm" ;;
+            resolute) CODENAME="Resolute" ;;
+            noble)    CODENAME="Noble" ;;
+            *)        CODENAME="${RELEASE}" ;;
+          esac
+          echo "codename=${CODENAME}" >> "${GITHUB_OUTPUT}"
+          echo "release=${RELEASE}" >> "${GITHUB_OUTPUT}"
 
   build:
     needs: setup
     runs-on: ubuntu-24.04
     if: ${{ github.event.repository.owner.id == github.event.sender.id }}
 
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
-
-    name: coreos-${{ matrix.release }}
+    name: coreos-${{ needs.setup.outputs.codename }}
 
     steps:
       - name: Checkout
@@ -161,7 +161,7 @@ jobs:
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
 
-      - name: Build CoreOS [ ${{ matrix.release }} ]
+      - name: Build CoreOS [ ${{ needs.setup.outputs.codename }} ]
         id: compile
         working-directory: /builder/build
         run: |
@@ -169,7 +169,7 @@ jobs:
           [[ -z "${config_board}" ]] && config_board="odroidn2"
 
           # Build full OS image with all deb packages
-          ./compile.sh RELEASE=${{ matrix.release }} BOARD=${config_board} BRANCH=current \
+          ./compile.sh RELEASE=${{ needs.setup.outputs.release }} BOARD=${config_board} BRANCH=current \
                        BUILD_MINIMAL=no BUILD_ONLY=default HOST=coreos \
                        BUILD_DESKTOP=no EXPERT=yes KERNEL_CONFIGURE=no \
                        COMPRESS_OUTPUTIMAGE="sha" SHARE_LOG=yes \
@@ -202,7 +202,7 @@ jobs:
           tar -czf coreos-all-debs.tar.gz coreos
           ls -lh /builder/debs/
 
-          echo "build_tag=CoreOS_${{ matrix.release }}_arm64_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+          echo "build_tag=CoreOS_${{ needs.setup.outputs.codename }}_arm64_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Upload CoreOS image to Release
