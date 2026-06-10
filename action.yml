@@ -66,9 +66,9 @@ inputs:
     required: false
     default: "all"
   kernel_sign:
-    description: "Set the kernel custom signature (default: -AtriStation)"
+    description: "Set the kernel custom signature (default: -atr)"
     required: false
-    default: "-AtriStation"
+    default: "-atr"
   kernel_toolchain:
     description: "Select the compilation toolchain"
     required: false

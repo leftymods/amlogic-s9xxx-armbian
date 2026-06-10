@@ -79,7 +79,7 @@ auto_kernel="true"
 # Set whether to apply custom kernel patches, options: [ true / false ]
 auto_patch="false"
 # Set custom signature for the kernel
-custom_name="-AtriStation"
+custom_name="-atr"
 pkg_maintainer="leftymods"
 # Set the kernel compile object, options: [ dtbs / all ]
 package_list="all"
@@ -193,7 +193,7 @@ init_var() {
         -n | --customName)
             if [[ -n "${2}" ]]; then
                 custom_name="${2// /}"
-                [[ -n "${custom_name}" ]] || custom_name="-AtriStation"
+                [[ -n "${custom_name}" ]] || custom_name="-atr"
                 [[ "${custom_name:0:1}" != "-" ]] && custom_name="-${custom_name}"
                 shift 2
             else
