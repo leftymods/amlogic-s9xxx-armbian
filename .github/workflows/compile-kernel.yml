@@ -75,6 +75,21 @@ on:
           - bookworm
           - resolute
           - noble
+      config_flavor:
+        description: "Set the kernel config flavor"
+        required: false
+        default: ""
+        type: choice
+        options:
+          - ""
+          - stable
+          - rk3588
+          - rk35xx
+          - h6
+      kernel_config:
+        description: "Path to custom kernel config directory"
+        required: false
+        default: "false"
       kernel_sign:
         description: "Set the kernel custom signature"
         required: false
@@ -197,6 +212,8 @@ jobs:
           kernel_auto: ${{ inputs.kernel_auto }}
           delete_source: ${{ inputs.delete_source }}
           kernel_package: ${{ inputs.kernel_package }}
+          config_flavor: ${{ inputs.config_flavor }}
+          kernel_config: ${{ inputs.kernel_config }}
           kernel_sign: ${{ inputs.kernel_sign }}
           kernel_toolchain: ${{ inputs.kernel_toolchain }}
           ccache_clear: ${{ inputs.ccache_clear }}
