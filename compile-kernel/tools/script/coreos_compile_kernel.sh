@@ -80,7 +80,7 @@ auto_kernel="true"
 auto_patch="false"
 # Set custom signature for the kernel
 custom_name="-AtriStation"
-pkg_maintainer="leftymods <ggalab33@gmail.com>"
+pkg_maintainer="leftymods"
 # Set the kernel compile object, options: [ dtbs / all ]
 package_list="all"
 # Set the compression format, options: [ gzip / lzma / xz / zstd ]
